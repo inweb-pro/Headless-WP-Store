@@ -1,0 +1,32 @@
+---
+const { title } = Astro.props;
+import '../styles/global.css'; // Подключаем общие стили
+---
+
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title} | MotoPuzzle</title>
+  </head>
+  <body>
+    <header class="main-header">
+      <div class="container">
+        <a href="/" class="logo">MotoPuzzle</a>
+        <nav>
+          <a href="/shop">Каталог</a>
+          <a href="/about">О нас</a>
+          <a href="/contacts">Контакты</a>
+        </nav>
+      </div>
+    </header>
+
+    <slot />
+
+    <footer class="main-footer">
+      <div class="container">
+        <p>&copy; 2026 MotoPuzzle - Запчасти и аксессуары</p>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,42 @@
+---
+import PageLayout from "../layouts/PageLayout.astro";
+import ProductCard from "../components/ProductCard.astro";
+
+const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
+	method: "POST",
+	headers: { "Content-Type": "application/json" },
+	body: JSON.stringify({
+		query: `
+      query GetLatestProducts {
+        products(first: 5) {
+          nodes {
+            name
+            uri
+						... on ProductWithPricing {
+							price
+							regularPrice
+						}
+            image { sourceUrl }
+          }
+        }
+      }
+    `,
+	}),
+});
+const { data } = await response.json();
+const latestProducts = data?.products?.nodes || [];
+---
+
+<PageLayout title="Главная">
+	<section class="hero">
+		<h1>MotoPuzzle</h1>
+		<p>Запчасти для мотоциклов BMW и не только.</p>
+	</section>
+
+	<section class="featured">
+		<h2>Новые поступления</h2>
+		<div class="products-grid">
+			{latestProducts.map((p) => <ProductCard product={p} />)}
+		</div>
+	</section>
+</PageLayout>

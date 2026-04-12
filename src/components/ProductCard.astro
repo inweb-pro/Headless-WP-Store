@@ -1,0 +1,24 @@
+---
+const { product } = Astro.props;
+// Форматируем цену (в Woocommerce она приходит строкой с символом валюты или без)
+const price = product.price || "Цена по запросу";
+---
+
+<article class="product-card">
+  <a href={product.uri} class="product-link">
+    <div class="image-wrapper">
+      <img src={product.image?.sourceUrl || '/placeholder.jpg'} alt={product.name} loading="lazy" />
+    </div>
+    <h3 class="product-name">{product.name}</h3>
+    <p class="product-price" set:html={price}></p>
+  </a>
+</article>
+
+<style>
+  .product-card { border: 1px solid #eee; transition: shadow 0.3s; padding: 10px; }
+  .product-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .image-wrapper img { width: 100%; height: 200px; object-fit: contain; }
+  .product-name { font-size: 1rem; margin: 0.5rem 0; color: #222; }
+  .product-price { color: #e44d26; font-weight: bold; }
+  .product-link { text-decoration: none; }
+</style>

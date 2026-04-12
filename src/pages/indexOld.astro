@@ -1,0 +1,51 @@
+---
+// src/pages/index.astro
+const wpUrl = "http://api-motopuzzle.local/graphql";
+
+const response = await fetch(wpUrl, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    query: `
+      query GetProducts {
+        products(first: 10) {
+          nodes {
+            name
+            slug
+            image {
+              sourceUrl
+            }
+						excerpt
+          }
+        }
+      }
+    `,
+  }),
+});
+
+const { data } = await response.json();
+const products = data?.products?.nodes || [];
+---
+
+<html lang="ru">
+	<head>
+		<meta charset="utf-8" />
+		<title>MotoPuzzle - Тест API</title>
+	</head>
+	<body>
+		<h1>Товары из WordPress на Astro</h1>
+		
+		<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+			{products.map((product) => (
+				<div style="border: 1px solid #ccc; padding: 10px;">
+					{product.image && <img src={product.image.sourceUrl} alt={product.name} style="width: 100%;" />}
+					<h3>{product.name}</h3>
+					<p>Slug: {product.slug}</p>
+					<p>{product.excerpt}</p>
+				</div>
+			))}
+		</div>
+
+		{products.length === 0 && <p>Товары не найдены или ошибка API.</p>}
+	</body>
+</html>

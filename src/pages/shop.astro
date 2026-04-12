@@ -1,0 +1,41 @@
+---
+import ShopLayout from '../layouts/ShopLayout.astro';
+import ProductCard from '../components/ProductCard.astro';
+
+const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    query: `
+      query GetAllProducts {
+        products(first: 11) {
+          nodes {
+            name
+            uri
+						... on ProductWithPricing {
+							price
+							regularPrice
+						}
+            image { sourceUrl }
+          }
+        }
+      }
+    `
+  }),
+});
+const { data, errors } = await response.json();
+const products = data?.products?.nodes || [];
+---
+<ShopLayout title="Каталог">
+  {errors && <div class="error">Ошибка API: {errors[0].message}</div>}
+  
+  <h1>Все товары ({products.length})</h1>
+  
+  <div class="products-grid">
+    {products.length > 0 ? (
+      products.map(p => <ProductCard product={p} />)
+    ) : (
+      <p>Товары не найдены. Проверь статус "Опубликовано" в WP.</p>
+    )}
+  </div>
+</ShopLayout>

@@ -1,0 +1,102 @@
+---
+import ShopLayout from '../layouts/ShopLayout.astro';
+import ProductCard from '../components/ProductCard.astro';
+
+const { slug } = Astro.params;
+
+// Игнорируем системные файлы
+if (slug?.includes('.js') || slug?.includes('.map') || slug?.startsWith('_astro')) {
+  return new Response(null, { status: 404 });
+}
+
+// Извлекаем финальный слаг (например, k1200s-03-08)
+const slugParts = slug?.split('/') || [];
+const finalSlug = slugParts[slugParts.length - 1].toLowerCase();
+
+console.log("--- ОТЛАДКА ---");
+console.log("Ищем объект по SLUG:", finalSlug);
+
+const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    query: `
+      query GetBySlug($id: ID!) {
+        # Прямой поиск категории по слагу
+        productCategory(id: $id, idType: SLUG) {
+          __typename
+          name
+          uri
+          description
+          products(first: 50) {
+            nodes {
+              name
+              uri
+              ... on ProductWithPricing { price }
+              image { sourceUrl }
+            }
+          }
+        }
+        # Прямой поиск товара по слагу
+        product(id: $id, idType: SLUG) {
+          __typename
+          name
+          uri
+          description
+          ... on ProductWithPricing { price }
+          image { sourceUrl }
+        }
+      }
+    `,
+    variables: { id: finalSlug }
+  }),
+});
+
+const json = await response.json();
+const node = json.data?.productCategory || json.data?.product;
+
+if (!node) {
+  console.log("РЕЗУЛЬТАТ: Ничего не найдено в WP для слага:", finalSlug);
+  return Astro.redirect('/404');
+}
+
+console.log("УСПЕХ! Найден:", node.name, "| Тип:", node.__typename);
+---
+
+<ShopLayout title={node.name}>
+  <div class="container">
+    {node.__typename === 'Product' ? (
+      <article class="product-page">
+        <div class="product-grid">
+          <div class="product-image">
+            <img src={node.image?.sourceUrl || '/placeholder.jpg'} alt={node.name} />
+          </div>
+          <div class="product-info">
+            <h1>{node.name}</h1>
+            <div class="price-tag" set:html={node.price}></div>
+            <div class="description" set:html={node.description}></div>
+            <button class="add-btn">В корзину</button>
+          </div>
+        </div>
+      </article>
+    ) : (
+      <section class="category-page">
+        <h1>{node.name}</h1>
+        <div class="products-grid">
+          {node.products?.nodes.map((p) => (
+            <ProductCard product={p} />
+          ))}
+        </div>
+      </section>
+    )}
+  </div>
+</ShopLayout>
+
+<style>
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+  .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
+  .price-tag { font-size: 2rem; color: #d32f2f; font-weight: bold; margin: 1rem 0; }
+  .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 2rem; }
+  img { width: 100%; border-radius: 8px; }
+  @media (max-width: 768px) { .product-grid { grid-template-columns: 1fr; } }
+</style>
