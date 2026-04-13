@@ -4,6 +4,7 @@ import ProductCard from "../components/ProductCard.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 
 const { slug } = Astro.params;
+
 if (slug?.includes(".js") || slug?.includes(".map") || slug?.startsWith("_astro")) {
 	return new Response(null, { status: 404 });
 }
@@ -23,6 +24,12 @@ const response = await fetch(apiUri, {
           name
           uri
           count
+          ancestors {
+            nodes {
+              name
+              uri
+            }
+          }
           products(first: 12) {
             pageInfo { hasNextPage, endCursor }
             nodes { 
@@ -40,7 +47,18 @@ const response = await fetch(apiUri, {
           description
           ... on ProductWithPricing { price }
           image { sourceUrl }
-          productCategories { nodes { name, uri } }
+          productCategories { 
+            nodes { 
+              name 
+              uri 
+              ancestors {
+                nodes {
+                  name
+                  uri
+                }
+              }
+            } 
+          }
         }
       }
     `,
@@ -52,10 +70,37 @@ const { data } = await response.json();
 const node = data?.productCategory || data?.product;
 
 if (!node) return Astro.redirect("/404");
+
 const isCategory = node.__typename === "ProductCategory";
-const breadcrumbItems = node.__typename === "Product"
-		? [...node.productCategories.nodes, { name: node.name }]
-		: [{ name: node.name }];
+
+// ФОРМИРОВАНИЕ ПОЛНОЙ ЦЕПОЧКИ КРОШЕК
+let breadcrumbItems = [];
+
+if (isCategory) {
+    // Для страницы категории/подкатегории
+    const ancestors = node.ancestors?.nodes ? [...node.ancestors.nodes].reverse() : [];
+    breadcrumbItems = [...ancestors, { name: node.name, uri: node.uri }];
+} else {
+    // Для страницы товара: ищем самую глубокую категорию
+    const categories = node.productCategories?.nodes || [];
+    
+    const deepestCategory = categories.reduce((deepest, current) => {
+        const deepestLen = deepest?.ancestors?.nodes?.length || 0;
+        const currentLen = current?.ancestors?.nodes?.length || 0;
+        return currentLen > deepestLen ? current : deepest;
+    }, categories[0]);
+
+    if (deepestCategory) {
+        const ancestors = deepestCategory.ancestors?.nodes ? [...deepestCategory.ancestors.nodes].reverse() : [];
+        breadcrumbItems = [
+            ...ancestors, 
+            { name: deepestCategory.name, uri: deepestCategory.uri }, 
+            { name: node.name, uri: node.uri }
+        ];
+    } else {
+        breadcrumbItems = [{ name: node.name, uri: node.uri }];
+    }
+}
 ---
 
 <ShopLayout title={node.name} currentUri={node.uri}>

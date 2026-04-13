@@ -1,26 +1,51 @@
 ---
-const { items } = Astro.props;
+const { items } = Astro.props; //
 ---
+
 <nav class="breadcrumbs" aria-label="Breadcrumb">
-  <ol>
-    <li><a href="/">Главная</a></li>
-    {items && items.map((item, index) => (
-      <li>
-        <span class="separator">/</span>
-        {index === items.length - 1 ? (
-          <span class="current" aria-current="page">{item.name}</span>
-        ) : (
-          <a href={item.uri}>{item.name}</a>
-        )}
-      </li>
-    ))}
-  </ol>
+	<ol>
+		<li><a href="/">Главная</a></li>
+		{
+			items &&
+				items.map((item, index) => (
+					<li>
+						<span class="separator">/</span>
+						{index === items.length - 1 ? (
+							<span class="current" aria-current="page">
+								{item.name}
+							</span> //
+						) : (
+							<a href={item.uri}>{item.name}</a> //
+						)}
+					</li>
+				))
+		}
+	</ol>
 </nav>
 
 <style>
-  .breadcrumbs ol { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.9rem; color: #666; }
-  .breadcrumbs a { color: #000; text-decoration: none; }
-  .breadcrumbs a:hover { text-decoration: underline; }
-  .separator { color: #ccc; }
-  .current { color: #888; font-weight: 500; }
+	.breadcrumbs ol {
+		list-style: none;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		font-size: 0.9rem;
+		color: #666;
+	}
+	.breadcrumbs a {
+		color: #000;
+		text-decoration: none;
+	}
+	.breadcrumbs a:hover {
+		text-decoration: underline;
+	}
+	.separator {
+		color: #ccc;
+		margin: 0 2px 0 0px;
+	}
+	.current {
+		color: #888;
+		font-weight: 500;
+	}
 </style>
