@@ -1,43 +1,38 @@
 ---
-import ShopLayout from '../layouts/ShopLayout.astro';
-import ProductCard from '../components/ProductCard.astro';
+import ShopLayout from "../layouts/ShopLayout.astro";
+import ProductCard from "../components/ProductCard.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
 
 const { slug } = Astro.params;
-
-// Игнорируем системные файлы
-if (slug?.includes('.js') || slug?.includes('.map') || slug?.startsWith('_astro')) {
-  return new Response(null, { status: 404 });
+if (slug?.includes(".js") || slug?.includes(".map") || slug?.startsWith("_astro")) {
+	return new Response(null, { status: 404 });
 }
 
-// Извлекаем финальный слаг (например, k1200s-03-08)
-const slugParts = slug?.split('/') || [];
-const finalSlug = slugParts[slugParts.length - 1].toLowerCase();
+const slugParts = slug?.split("/").filter(Boolean) || [];
+const finalSlug = slugParts[slugParts.length - 1];
+const apiUri = import.meta.env.WORDPRESS_API_URL;
 
-console.log("--- ОТЛАДКА ---");
-console.log("Ищем объект по SLUG:", finalSlug);
-
-const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    query: `
-      query GetBySlug($id: ID!) {
-        # Прямой поиск категории по слагу
+const response = await fetch(apiUri, {
+	method: "POST",
+	headers: { "Content-Type": "application/json" },
+	body: JSON.stringify({
+		query: `
+      query GetNode($id: ID!) {
         productCategory(id: $id, idType: SLUG) {
           __typename
           name
           uri
-          description
-          products(first: 50) {
-            nodes {
-              name
-              uri
-              ... on ProductWithPricing { price }
-              image { sourceUrl }
+          count
+          products(first: 12) {
+            pageInfo { hasNextPage, endCursor }
+            nodes { 
+              name 
+              uri 
+              ... on ProductWithPricing { price } 
+              image { sourceUrl } 
             }
           }
         }
-        # Прямой поиск товара по слагу
         product(id: $id, idType: SLUG) {
           __typename
           name
@@ -45,58 +40,132 @@ const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
           description
           ... on ProductWithPricing { price }
           image { sourceUrl }
+          productCategories { nodes { name, uri } }
         }
       }
     `,
-    variables: { id: finalSlug }
-  }),
+		variables: { id: finalSlug },
+	}),
 });
 
-const json = await response.json();
-const node = json.data?.productCategory || json.data?.product;
+const { data } = await response.json();
+const node = data?.productCategory || data?.product;
 
-if (!node) {
-  console.log("РЕЗУЛЬТАТ: Ничего не найдено в WP для слага:", finalSlug);
-  return Astro.redirect('/404');
-}
-
-console.log("УСПЕХ! Найден:", node.name, "| Тип:", node.__typename);
+if (!node) return Astro.redirect("/404");
+const isCategory = node.__typename === "ProductCategory";
+const breadcrumbItems = node.__typename === "Product"
+		? [...node.productCategories.nodes, { name: node.name }]
+		: [{ name: node.name }];
 ---
 
-<ShopLayout title={node.name}>
-  <div class="container">
-    {node.__typename === 'Product' ? (
-      <article class="product-page">
-        <div class="product-grid">
-          <div class="product-image">
-            <img src={node.image?.sourceUrl || '/placeholder.jpg'} alt={node.name} />
-          </div>
-          <div class="product-info">
-            <h1>{node.name}</h1>
-            <div class="price-tag" set:html={node.price}></div>
-            <div class="description" set:html={node.description}></div>
-            <button class="add-btn">В корзину</button>
-          </div>
-        </div>
-      </article>
-    ) : (
-      <section class="category-page">
-        <h1>{node.name}</h1>
-        <div class="products-grid">
-          {node.products?.nodes.map((p) => (
-            <ProductCard product={p} />
-          ))}
-        </div>
-      </section>
-    )}
-  </div>
+<ShopLayout title={node.name} currentUri={node.uri}>
+	<main class="content-wrapper">
+		<Breadcrumbs items={breadcrumbItems} />
+
+		{
+			isCategory ? (
+				<section class="category-view">
+					<h1>{node.name} ({node.count || 0})</h1>
+					<div id="products-grid" class="products-grid">
+						{node.products?.nodes.map((p) => <ProductCard product={p} />)}
+					</div>
+
+					{node.products?.pageInfo.hasNextPage && (
+						<div class="load-more-container">
+							<button
+								id="load-more-btn"
+								class="load-more-btn"
+								data-cursor={node.products.pageInfo.endCursor}
+								data-slug={finalSlug}
+								data-api={apiUri}
+							>
+								Загрузить еще
+							</button>
+						</div>
+					)}
+				</section>
+			) : (
+				<article class="product-detail">
+					<div class="product-main">
+						<img src={node.image?.sourceUrl || "/placeholder.jpg"} alt={node.name} />
+						<div class="product-info">
+							<h1>{node.name}</h1>
+							<div class="price" set:html={node.price} />
+							<button class="buy-btn">В корзину</button>
+							<div class="description" set:html={node.description} />
+						</div>
+					</div>
+				</article>
+			)
+		}
+	</main>
 </ShopLayout>
 
-<style>
-  .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-  .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
-  .price-tag { font-size: 2rem; color: #d32f2f; font-weight: bold; margin: 1rem 0; }
-  .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 2rem; }
-  img { width: 100%; border-radius: 8px; }
-  @media (max-width: 768px) { .product-grid { grid-template-columns: 1fr; } }
-</style>
+<script>
+	const btn = document.getElementById("load-more-btn") as HTMLButtonElement;
+	const grid = document.getElementById("products-grid");
+
+	if (btn && grid) {
+		const apiUri = btn.getAttribute("data-api")!;
+		const slug = btn.getAttribute("data-slug")!;
+
+		btn.addEventListener("click", async () => {
+			const cursor = btn.getAttribute("data-cursor");
+			btn.disabled = true;
+			btn.innerText = "Загрузка...";
+
+			try {
+				const res = await fetch(apiUri, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						query: `query LoadMoreCat($id: ID!, $after: String) {
+              productCategory(id: $id, idType: SLUG) {
+                products(first: 12, after: $after) {
+                  pageInfo { hasNextPage, endCursor }
+                  nodes { 
+                    name 
+                    uri 
+                    ... on ProductWithPricing { price } 
+                    image { sourceUrl } 
+                  }
+                }
+              }
+            }`,
+						variables: { id: slug, after: cursor },
+					}),
+				});
+				const { data } = await res.json();
+				const next = data.productCategory.products;
+
+				next.nodes.forEach((p: any) => {
+					const container = document.createElement("div");
+					container.innerHTML = `
+            <article class="product-card">
+              <a href="${p.uri}" class="product-link">
+                <div class="image-wrapper">
+                  <img src="${p.image?.sourceUrl || "/placeholder.jpg"}" alt="${p.name}" loading="lazy" />
+                </div>
+                <h3 class="product-name">${p.name}</h3>
+                <p class="product-price">${p.price || "Цена по запросу"}</p>
+              </a>
+            </article>
+          `;
+					grid.appendChild(container.firstElementChild!);
+				});
+
+				if (next.pageInfo.hasNextPage) {
+					btn.setAttribute("data-cursor", next.pageInfo.endCursor);
+					btn.innerText = "Загрузить еще";
+					btn.disabled = false;
+				} else {
+					btn.remove();
+				}
+			} catch (e) {
+				console.error(e);
+				btn.innerText = "Ошибка";
+				btn.disabled = false;
+			}
+		});
+	}
+</script>

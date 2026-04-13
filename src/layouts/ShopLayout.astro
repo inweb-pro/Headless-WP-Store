@@ -1,20 +1,17 @@
 ---
-import Layout from '../components/Layout.astro';
-import Sidebar from '../components/Sidebar.astro';
+import Layout from "../components/Layout.astro";
+import Sidebar from "../components/Sidebar.astro";
 const { title } = Astro.props;
+import "../styles/shop.css";
 ---
-<Layout title={title}>
-  <div class="container shop-layout">
-    <aside class="shop-sidebar">
-      <Sidebar />
-    </aside>
-    <main class="shop-main">
-      <slot />
-    </main>
-  </div>
-</Layout>
 
-<style>
-  .shop-layout { display: grid; grid-template-columns: 280px 1fr; gap: 40px; margin: 40px auto; }
-  @media (max-width: 768px) { .shop-layout { grid-template-columns: 1fr; } }
-</style>
+<Layout title={title}>
+	<div class="container shop-layout">
+		<aside class="shop-sidebar">
+			<Sidebar />
+		</aside>
+		<main class="shop-main">
+			<slot />
+		</main>
+	</div>
+</Layout>
