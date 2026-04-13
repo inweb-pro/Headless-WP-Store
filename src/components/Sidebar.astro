@@ -1,10 +1,10 @@
 ---
 // Получаем категории верхнего уровня и их дочерние элементы
 const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    query: `
+	method: "POST",
+	headers: { "Content-Type": "application/json" },
+	body: JSON.stringify({
+		query: `
       query GetSideBarCategories {
         productCategories(where: { parent: 0 }, first: 100) {
           nodes {
@@ -19,8 +19,8 @@ const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
           }
         }
       }
-    `
-  }),
+    `,
+	}),
 });
 
 const { data } = await response.json();
@@ -28,28 +28,25 @@ const categories = data?.productCategories?.nodes || [];
 ---
 
 <nav class="sidebar">
-  <h2 class="sidebar-title">Категории</h2>
-  <ul class="cat-list">
-    {categories.map(cat => (
-      <li class="cat-item">
-        <a href={cat.uri} class="cat-link">{cat.name}</a>
-        {cat.children.nodes.length > 0 && (
-          <ul class="sub-cat-list">
-            {cat.children.nodes.map(sub => (
-              <li><a href={sub.uri}>{sub.name}</a></li>
-            ))}
-          </ul>
-        )}
-      </li>
-    ))}
-  </ul>
+	<h2 class="sidebar-title">Категории</h2>
+	<ul class="cat-list">
+		{
+			categories.map((cat) => (
+				<li class="cat-item">
+					<a href={cat.uri} class="cat-link">
+						{cat.name}
+					</a>
+					{cat.children.nodes.length > 0 && (
+						<ul class="sub-cat-list">
+							{cat.children.nodes.map((sub) => (
+								<li>
+									<a href={sub.uri}>{sub.name}</a>
+								</li>
+							))}
+						</ul>
+					)}
+				</li>
+			))
+		}
+	</ul>
 </nav>
-
-<style>
-  .sidebar { padding: 1rem; background: #f9f9f9; border-radius: 8px; }
-  .sidebar-title { font-size: 1.2rem; margin-bottom: 1rem; border-bottom: 2px solid #eee; }
-  .cat-list { list-style: none; padding: 0; }
-  .cat-item { margin-bottom: 0.5rem; }
-  .cat-link { font-weight: bold; color: #333; text-decoration: none; }
-  .sub-cat-list { padding-left: 1rem; font-size: 0.9rem; margin-top: 0.3rem; }
-</style>

@@ -1,41 +1,124 @@
 ---
-import ShopLayout from '../layouts/ShopLayout.astro';
-import ProductCard from '../components/ProductCard.astro';
+import ShopLayout from "../layouts/ShopLayout.astro";
+import ProductCard from "../components/ProductCard.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
 
-const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    query: `
-      query GetAllProducts {
-        products(first: 11) {
+const apiUri = import.meta.env.WORDPRESS_API_URL;
+const response = await fetch(apiUri, {
+	method: "POST",
+	headers: { "Content-Type": "application/json" },
+	body: JSON.stringify({
+		query: `
+      query GetShop {
+        products(first: 12) {
+          pageInfo { hasNextPage, endCursor }
+          found
           nodes {
             name
             uri
-						... on ProductWithPricing {
-							price
-							regularPrice
-						}
+            ... on ProductWithPricing { price }
             image { sourceUrl }
           }
         }
       }
-    `
-  }),
+    `,
+	}),
 });
-const { data, errors } = await response.json();
-const products = data?.products?.nodes || [];
+
+const { data } = await response.json();
+const products = data?.products;
+const totalCount = products?.found || 0;
 ---
+
 <ShopLayout title="Каталог">
-  {errors && <div class="error">Ошибка API: {errors[0].message}</div>}
-  
-  <h1>Все товары ({products.length})</h1>
-  
-  <div class="products-grid">
-    {products.length > 0 ? (
-      products.map(p => <ProductCard product={p} />)
-    ) : (
-      <p>Товары не найдены. Проверь статус "Опубликовано" в WP.</p>
-    )}
-  </div>
+	<main class="content-wrapper">
+		<Breadcrumbs items={[{ name: "Каталог" }]} />
+
+		<section class="catalog-view">
+			<h1>Все товары (<span id="total-count">{totalCount}</span>)</h1>
+
+			<div id="products-grid" class="products-grid">
+				{products?.nodes.map((p) => <ProductCard product={p} />)}
+			</div>
+
+			{products?.pageInfo.hasNextPage && (
+				<div class="load-more-container">
+					<button
+						id="load-more-btn"
+						class="load-more-btn"
+						data-cursor={products.pageInfo.endCursor}
+						data-api={apiUri}
+					>
+						Загрузить еще
+					</button>
+				</div>
+			)}
+		</section>
+	</main>
 </ShopLayout>
+
+<script>
+	const btn = document.getElementById("load-more-btn") as HTMLButtonElement;
+	const grid = document.getElementById("products-grid");
+
+	if (btn && grid) {
+		const apiUri = btn.getAttribute("data-api")!;
+		btn.addEventListener("click", async () => {
+			const cursor = btn.getAttribute("data-cursor");
+			btn.disabled = true;
+			btn.innerText = "Загрузка...";
+
+			try {
+				const res = await fetch(apiUri, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						query: `query LoadMore($after: String) {
+              products(first: 12, after: $after) {
+                pageInfo { hasNextPage, endCursor }
+                nodes { 
+                  name 
+                  uri 
+                  ... on ProductWithPricing { price } 
+                  image { sourceUrl } 
+                }
+              }
+            }`,
+						variables: { after: cursor },
+					}),
+				});
+				const { data } = await res.json();
+				const next = data.products;
+
+				next.nodes.forEach((p: any) => {
+					const container = document.createElement("div");
+          // Формируем строго идентичную разметку для CSS селекторов
+					container.innerHTML = `
+            <article class="product-card">
+              <a href="${p.uri}" class="product-link">
+                <div class="image-wrapper">
+                  <img src="${p.image?.sourceUrl || "/placeholder.jpg"}" alt="${p.name}" loading="lazy" />
+                </div>
+                <h3 class="product-name">${p.name}</h3>
+                <p class="product-price">${p.price || "Цена по запросу"}</p>
+              </a>
+            </article>
+          `;
+					grid.appendChild(container.firstElementChild!);
+				});
+
+				if (next.pageInfo.hasNextPage) {
+					btn.setAttribute("data-cursor", next.pageInfo.endCursor);
+					btn.innerText = "Загрузить еще";
+					btn.disabled = false;
+				} else {
+					btn.remove();
+				}
+			} catch (e) {
+				console.error(e);
+				btn.innerText = "Ошибка";
+				btn.disabled = false;
+			}
+		});
+	}
+</script>
