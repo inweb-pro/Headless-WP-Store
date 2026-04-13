@@ -14,8 +14,15 @@
 	}
 
 
-  .sidebar { padding: 1rem; background: #f9f9f9; border-radius: 8px; }
-  .sidebar-title { font-size: 1.2rem; margin-bottom: 1rem; border-bottom: 2px solid #eee; }
+  .sidebar { 
+		padding: 1rem; background: #f9f9f9; border-radius: 8px;
+	}
+  .sidebar-title { 
+		font-size: 1.2rem; border-bottom: 2px solid #eee;
+		padding-bottom: 5px;
+		display: inline-block;
+		margin: 10px 0 15px;
+	}
   .cat-list { list-style: none; padding: 0; }
   .cat-item { margin-bottom: 0.5rem; }
   .cat-link { font-weight: bold; color: #333; text-decoration: none; }
@@ -23,79 +30,133 @@
 
 
 
-	.sidebar {
-		padding: 1rem;
-		background: #f9f9f9;
-		border-radius: 8px;
-	}
-	.sidebar-title {
-		font-size: 1.2rem;
-		margin-bottom: 1.5rem;
-		border-bottom: 2px solid #eee;
-		padding-bottom: 0.5rem;
-		text-transform: uppercase;
-		letter-spacing: 1px;
-	}
-	.cat-list {
-		list-style: none;
-		padding: 0;
-	}
-	.cat-item {
-		margin-bottom: 1rem;
+
+
+	/* 1. Ограничение высоты и прокрутка */
+	.categories-scroll-area {
+		max-height: 500px; /* Настрой высоту под себя */
+		overflow-y: auto;
+		padding-right: 10px;
 	}
 
-	/* Стили для основных категорий (BMW, Ducati и т.д.) */
-	.cat-link {
-		font-weight: 700;
-		color: #1a1a1a;
-		text-decoration: none;
-		display: inline-block;
-		transition: all 0.2s ease;
-		position: relative;
-		padding-left: 8px;
+	/* Кастомный скроллбар (замена nicescroll) */
+	.categories-scroll-area::-webkit-scrollbar {
+		width: 4px;
+	}
+	.categories-scroll-area::-webkit-scrollbar-track {
+		background: #f1f1f1;
+	}
+	.categories-scroll-area::-webkit-scrollbar-thumb {
+		background: #ccc;
+		border-radius: 10px;
+	}
+	.categories-scroll-area::-webkit-scrollbar-thumb:hover {
+		background: #e44d26;
 	}
 
-	/* Активное состояние родителя: всегда подчеркнуто, если мы внутри или на странице товара */
-	.cat-link.active {
-		text-decoration: underline;
-		/* text-underline-offset: 4px;
-		text-decoration-thickness: 2px; */
-	}
-
-	/* Стили для подкатегорий (модели мотоциклов) */
+	/* 2. Логика аккордеона */
 	.sub-cat-list {
-		padding-left: 1rem;
-		font-size: 0.9rem;
-		margin-top: 0.6rem;
-		list-style: none;
-		/* margin-left: 0.2rem; */
+		display: none; /* По умолчанию скрыто */
+		padding-left: 15px;
+		padding-right: 18px;
+		margin: 0.2rem 0;
+		/* border-left: 1px solid #eee; */
 	}
-	.sub-cat-list li {
-		margin-bottom: 0.4rem;
+
+	.is-open .sub-cat-list {
+		display: block; /* Показываем, если ветка активна */
 	}
-	.sub-cat-list a {
+	.cat-item.is-open .toggle-btn svg {
+		transform: rotate(180deg);
+	}
+
+	/* 3. Стили элементов (как на скриншоте) */
+	.cat-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.5rem 0;
+	}
+
+	.cat-link {
 		text-decoration: none;
-		color: #555;
-		transition: color 0.2s ease;
-		display: block;
-	}
-
-	/* Активное состояние подкатегории: цвет */
-	.sub-cat-list a.sub-active {
-		color: #e44d26; /* Твой основной акцентный цвет */
+		color: #333;
 		font-weight: 600;
-    text-decoration: underline;
+		flex-grow: 1;
 	}
 
-	.cat-link:hover,
-	.sub-cat-list a:hover {
+	/* .cat-link.active, */
+  .cat-link:hover,
+  .is-open .cat-link {
 		color: #000;
 	}
 
+	.count-badge {
+		background: #ffffff;
+		color: #888;
+		padding: 2px 8px;
+		border: 1px solid rgba(129, 129, 129, 0.2);
+		border-radius: 35px;
+		font-size: 0.75rem;
+		margin: 0 5px;
+	}
+
+	.count-badge.highlight {
+		background: #ffcc00; /* Желтый как на скриншоте */
+		color: #000;
+    font-weight: bold;
+    border-color: transparent;
+	}
+
+	.sub-cat-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.3rem 0;
+	}
+
+	.sub-cat-item a {
+		position: relative;
+		text-decoration: none;
+		color: #666;
+		font-size: 0.9rem;
+	}
+
+	.sub-cat-item a:hover {
+		color: #000;
+  }
+	.sub-cat-item a:before {
+		content: "";
+		position: absolute;
+		top: 51%;
+		left: -14px;
+		width: 8px;
+		height: 1px;
+		background: #bbb;
+	}
+
+	.sub-cat-item a.sub-active {
+		text-decoration: underline;
+		/* font-weight: bold; */
+		color: #000;
+	}
+
+	.toggle-btn {
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0;
+		display: flex;
+		align-items: center;
+		transition: transform 0.2s;
+	}
 
 
 
 
+
+
+	
 
   .product-card { border: 1px solid #eee; transition: shadow 0.3s; padding: 10px; }
   .product-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }

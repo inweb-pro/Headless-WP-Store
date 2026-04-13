@@ -1,8 +1,5 @@
 ---
-// Получаем текущий путь из URL Astro
 const { pathname } = Astro.url;
-
-// Функция для нормализации (удаляем слэши в начале и конце для надежного сравнения)
 const normalize = (path: string) => path?.replace(/^\/|\/$/g, "") || "";
 const currentPath = normalize(pathname);
 
@@ -12,16 +9,19 @@ const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
 	body: JSON.stringify({
 		query: `
       query GetSideBarCategories {
-        productCategories(where: { parent: 0 }, first: 100) {
+        productCategories(where: { 
+          parent: 0,
+          hideEmpty: true
+         }, first: 100) {
           nodes {
             name
             uri
-            slug
+            count
             children {
               nodes {
                 name
                 uri
-                slug
+                count
               }
             }
           }
@@ -35,47 +35,90 @@ const { data } = await response.json();
 const categories = data?.productCategories?.nodes || [];
 ---
 
-<nav class="sidebar">
-	<h2 class="sidebar-title">Категории</h2>
-	<ul class="cat-list">
-		{
-			categories.map((cat) => {
-				const catPath = normalize(cat.uri);
-				// Главная категория активна, если текущий путь начинается с её пути
-				// Например: /bmw/k1200s... начинается с /bmw
-				const isParentActive =
-					currentPath.startsWith(catPath) && catPath !== "";
+<nav class="sidebar-nav">
+	<h2 class="sidebar-title">Выберите марку/модель</h2>
+	<div class="categories-scroll-area">
+		<ul class="cat-list">
+			{
+				categories.map((cat) => {
+					const catPath = normalize(cat.uri);
 
-				return (
-					<li class="cat-item">
-						<a
-							href={cat.uri}
-							class={`cat-link ${isParentActive ? "active" : ""}`}
-						>
-							{cat.name}
-						</a>
+					// 1. Ветка открыта, если мы находимся внутри неё (startsWith)
+					const isBranchOpen =
+						currentPath.startsWith(catPath) && catPath !== "";
 
-						{cat.children.nodes.length > 0 && (
-							<ul class="sub-cat-list">
-								{cat.children.nodes.map((sub) => {
-									const subPath = normalize(sub.uri);
-									// Подкатегория активна, если путь начинается с её URI
-									const isSubActive =
-										currentPath.startsWith(subPath) && subPath !== "";
+					// 2. Бейдж подсвечивается ТОЛЬКО если выбрана сама категория (точное совпадение)
+					const isParentExact = currentPath === catPath;
 
-									return (
-										<li>
-											<a href={sub.uri} class={isSubActive ? "sub-active" : ""}>
-												{sub.name}
-											</a>
-										</li>
-									);
-								})}
-							</ul>
-						)}
-					</li>
-				);
-			})
-		}
-	</ul>
+					return (
+						<li class={`cat-item ${isBranchOpen ? "is-open" : "is-closed"}`}>
+							<div class="cat-header">
+								<a
+									href={cat.uri}
+									class={`cat-link ${isParentExact ? "active" : ""}`}
+								>
+									{cat.name}
+								</a>
+
+								{/* Highlight только при точном совпадении с родителем */}
+								<span class={`count-badge ${isParentExact ? "highlight" : ""}`}>
+									{cat.count}
+								</span>
+
+								{cat.children.nodes.length > 0 && (
+									<button class="toggle-btn" aria-label="Toggle submenu">
+										<svg viewBox="0 0 24 24" width="18" height="18">
+											<path d="M7 10l5 5 5-5z" />
+										</svg>
+									</button>
+								)}
+							</div>
+
+							{cat.children.nodes.length > 0 && (
+								<ul class="sub-cat-list">
+									{cat.children.nodes.map((sub) => {
+										const subPath = normalize(sub.uri);
+										// Точное совпадение для подкатегории
+										// Теперь подкатегория активна, если текущий путь начинается с её пути
+										const isSubActive =
+											currentPath.startsWith(subPath) && subPath !== "";
+
+										return (
+											<li class="sub-cat-item">
+												<a
+													href={sub.uri}
+													class={isSubActive ? "sub-active" : ""}
+												>
+													{sub.name}
+												</a>
+
+												<span
+													class={`count-badge small ${isSubActive ? "highlight" : ""}`}
+												>
+													{sub.count}
+												</span>
+											</li>
+										);
+									})}
+								</ul>
+							)}
+						</li>
+					);
+				})
+			}
+		</ul>
+	</div>
 </nav>
+
+<script>
+	// Интерактив на клиенте (позволяет сворачивать/разворачивать вручную)
+	const toggles = document.querySelectorAll(".toggle-btn");
+	toggles.forEach((btn) => {
+		btn.addEventListener("click", () => {
+			const parent = btn.closest(".cat-item");
+			if (parent) {
+				parent.classList.toggle("is-open");
+			}
+		});
+	});
+</script>
