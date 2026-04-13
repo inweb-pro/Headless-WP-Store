@@ -1,5 +1,11 @@
 ---
-// Получаем категории верхнего уровня и их дочерние элементы
+// Получаем текущий путь из URL Astro
+const { pathname } = Astro.url;
+
+// Функция для нормализации (удаляем слэши в начале и конце для надежного сравнения)
+const normalize = (path: string) => path?.replace(/^\/|\/$/g, "") || "";
+const currentPath = normalize(pathname);
+
 const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
 	method: "POST",
 	headers: { "Content-Type": "application/json" },
@@ -10,10 +16,12 @@ const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
           nodes {
             name
             uri
+            slug
             children {
               nodes {
                 name
                 uri
+                slug
               }
             }
           }
@@ -31,22 +39,43 @@ const categories = data?.productCategories?.nodes || [];
 	<h2 class="sidebar-title">Категории</h2>
 	<ul class="cat-list">
 		{
-			categories.map((cat) => (
-				<li class="cat-item">
-					<a href={cat.uri} class="cat-link">
-						{cat.name}
-					</a>
-					{cat.children.nodes.length > 0 && (
-						<ul class="sub-cat-list">
-							{cat.children.nodes.map((sub) => (
-								<li>
-									<a href={sub.uri}>{sub.name}</a>
-								</li>
-							))}
-						</ul>
-					)}
-				</li>
-			))
+			categories.map((cat) => {
+				const catPath = normalize(cat.uri);
+				// Главная категория активна, если текущий путь начинается с её пути
+				// Например: /bmw/k1200s... начинается с /bmw
+				const isParentActive =
+					currentPath.startsWith(catPath) && catPath !== "";
+
+				return (
+					<li class="cat-item">
+						<a
+							href={cat.uri}
+							class={`cat-link ${isParentActive ? "active" : ""}`}
+						>
+							{cat.name}
+						</a>
+
+						{cat.children.nodes.length > 0 && (
+							<ul class="sub-cat-list">
+								{cat.children.nodes.map((sub) => {
+									const subPath = normalize(sub.uri);
+									// Подкатегория активна, если путь начинается с её URI
+									const isSubActive =
+										currentPath.startsWith(subPath) && subPath !== "";
+
+									return (
+										<li>
+											<a href={sub.uri} class={isSubActive ? "sub-active" : ""}>
+												{sub.name}
+											</a>
+										</li>
+									);
+								})}
+							</ul>
+						)}
+					</li>
+				);
+			})
 		}
 	</ul>
 </nav>

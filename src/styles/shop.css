@@ -23,6 +23,80 @@
 
 
 
+	.sidebar {
+		padding: 1rem;
+		background: #f9f9f9;
+		border-radius: 8px;
+	}
+	.sidebar-title {
+		font-size: 1.2rem;
+		margin-bottom: 1.5rem;
+		border-bottom: 2px solid #eee;
+		padding-bottom: 0.5rem;
+		text-transform: uppercase;
+		letter-spacing: 1px;
+	}
+	.cat-list {
+		list-style: none;
+		padding: 0;
+	}
+	.cat-item {
+		margin-bottom: 1rem;
+	}
+
+	/* Стили для основных категорий (BMW, Ducati и т.д.) */
+	.cat-link {
+		font-weight: 700;
+		color: #1a1a1a;
+		text-decoration: none;
+		display: inline-block;
+		transition: all 0.2s ease;
+		position: relative;
+		padding-left: 8px;
+	}
+
+	/* Активное состояние родителя: всегда подчеркнуто, если мы внутри или на странице товара */
+	.cat-link.active {
+		text-decoration: underline;
+		/* text-underline-offset: 4px;
+		text-decoration-thickness: 2px; */
+	}
+
+	/* Стили для подкатегорий (модели мотоциклов) */
+	.sub-cat-list {
+		padding-left: 1rem;
+		font-size: 0.9rem;
+		margin-top: 0.6rem;
+		list-style: none;
+		/* margin-left: 0.2rem; */
+	}
+	.sub-cat-list li {
+		margin-bottom: 0.4rem;
+	}
+	.sub-cat-list a {
+		text-decoration: none;
+		color: #555;
+		transition: color 0.2s ease;
+		display: block;
+	}
+
+	/* Активное состояние подкатегории: цвет */
+	.sub-cat-list a.sub-active {
+		color: #e44d26; /* Твой основной акцентный цвет */
+		font-weight: 600;
+    text-decoration: underline;
+	}
+
+	.cat-link:hover,
+	.sub-cat-list a:hover {
+		color: #000;
+	}
+
+
+
+
+
+
   .product-card { border: 1px solid #eee; transition: shadow 0.3s; padding: 10px; }
   .product-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
   .image-wrapper img { width: 100%; height: 200px; object-fit: contain; }

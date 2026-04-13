@@ -5,7 +5,7 @@ body { font-family: 'Segoe UI', sans-serif; margin: 0; line-height: 1.6; color: 
 .main-header { background: #fff; border-bottom: 1px solid #eee; padding: 20px 0; }
 .main-header .container { display: flex; justify-content: space-between; align-items: center; }
 .logo { font-size: 1.5rem; font-weight: bold; color: var(--primary); text-decoration: none; }
-nav a { margin-left: 20px; text-decoration: none; color: var(--dark); }
+.main-header nav a { margin-left: 20px; text-decoration: none; color: var(--dark); }
 
 .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
 
