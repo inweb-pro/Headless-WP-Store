@@ -67,10 +67,15 @@
 .middle-header {
 	padding: 25px 0;
 }
+.middle-header .logo {
+	height: 60px;
+	max-width: 230px;
+}
 .middle-inner {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	height: 55px;
 }
 .mobile-toggle {
 	display: none;
@@ -89,6 +94,7 @@
 	color: #333;
 	font-weight: 700;
 	font-size: 14px;
+	text-transform: uppercase;
 }
 .action-item .price {
 	font-size: 16px;
@@ -140,6 +146,16 @@
 	text-decoration: none;
 	padding-left: 7px;
 }
+.nav-item a:hover {
+	color: #000;
+}
+.nav-item a:hover span {
+	border-bottom: 2px var(--color-primary) solid;
+	padding: 2px 0;
+}
+.nav-item a:hover .nav-icon {
+	/* fill: var(--color-primary); */
+}
 .nav-item .nav-icon {
 	position: relative;
 	left: -5px;
@@ -147,7 +163,6 @@
 }
 .sell-moto {
 	margin-left: auto;
-	color: #333;
 }
 
 /* Responsive 1024px */
@@ -163,15 +178,17 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
+		text-transform: uppercase;
 		font-weight: 700;
 	}
 	.middle-header {
 		padding: 15px 0;
 	}
-	.logo {
+	.middle-header .logo {
 		position: absolute;
 		left: 50%;
 		transform: translateX(-50%);
+		height: 60px;
 	}
 	.mobile-actions {
 		display: flex;
