@@ -1,5 +1,6 @@
 ---
 import HeaderSearch from "./HeaderSearch.astro";
+import Offcanvas from "./Offcanvas.astro";
 import "../styles/header.css"; // Подключаем общие стили
 ---
 
@@ -22,7 +23,7 @@ import "../styles/header.css"; // Подключаем общие стили
 			</div>
 			<div class="top-right">
 				<div class="top-nav-links">
-					<a href="#">E-mail рассылка</a>|<a href="#">Новости</a>
+					<a href="/about">О компании</a>|<a href="/blog">Новости</a>
 				</div>
 				<div class="socials">
 					<a
@@ -72,7 +73,7 @@ import "../styles/header.css"; // Подключаем общие стили
 
 	<div class="middle-header">
 		<div class="container middle-inner">
-			<div class="mobile-toggle">
+			<div class="mobile-toggle" data-offcanvas-toggle="mobile-menu">
 				<svg class="icon" width="24" height="24">
 					<use href="/ui-icons.svg#menu"></use>
 				</svg>
@@ -221,7 +222,7 @@ import "../styles/header.css"; // Подключаем общие стили
 					</div>
 				</div>
 
-				<div class="action-item cart-total">
+				<div class="action-item cart-total" data-offcanvas-toggle="cart-panel">
 					<div class="icon-badge">
 						<svg class="icon" width="28" height="28">
 							<use href="/ui-icons.svg#shopping-cart"></use>
@@ -232,16 +233,21 @@ import "../styles/header.css"; // Подключаем общие стили
 				</div>
 
 				<div class="mobile-actions">
-					<a href="#">
+					<div
+						data-offcanvas-toggle="mobile-menu"
+						data-focus-id="mobile-search-input"
+					>
 						<svg class="nav-icon" width="26" height="26">
 							<use href="/ui-icons.svg#search"></use>
 						</svg>
-					</a>
+					</div>
 					<div class="icon-badge">
-						<svg class="icon" width="26" height="26">
-							<use href="/ui-icons.svg#shopping-cart"></use>
-						</svg>
-						<span class="badge yellow">2</span>
+						<div data-offcanvas-toggle="cart-panel">
+							<svg class="icon" width="26" height="26">
+								<use href="/ui-icons.svg#shopping-cart"></use>
+							</svg>
+							<span class="badge yellow">2</span>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -252,39 +258,39 @@ import "../styles/header.css"; // Подключаем общие стили
 		<div class="container">
 			<ul class="nav-list">
 				<li class="nav-item">
-					<a href="#">
-						<svg class="nav-icon" width="20" height="20">
+					<a href="/shop">
+						<svg class="nav-icon" width="18" height="18">
 							<use href="/ui-icons.svg#cog"></use>
 						</svg>
 						<span>Каталог запчастей</span>
 					</a>
 				</li>
 				<li class="nav-item">
-					<a href="#">
-						<svg class="nav-icon" width="20" height="20">
+					<a href="/motopodbor">
+						<svg class="nav-icon" width="21" height="21">
 							<use href="/ui-icons.svg#asset--view"></use>
 						</svg>
 						<span>Мотоподбор</span>
 					</a>
 				</li>
 				<li class="nav-item">
-					<a href="#">
-						<svg class="nav-icon" width="20" height="20">
+					<a href="/motoservis">
+						<svg class="nav-icon" width="21" height="21">
 							<use href="/ui-icons.svg#wrench"></use>
 						</svg>
 						<span>Мотосервис</span>
 					</a>
 				</li>
 				<li class="nav-item">
-					<a href="#">
-						<svg class="nav-icon" width="20" height="20">
+					<a href="/motoevakuator">
+						<svg class="nav-icon" width="21" height="21">
 							<use href="/ui-icons.svg#delivery-truck"></use>
 						</svg>
 						<span>Мотоэвакуатор</span>
 					</a>
 				</li>
 				<li class="nav-item">
-					<a href="#">
+					<a href="/contacts">
 						<svg class="nav-icon" width="20" height="20">
 							<use href="/ui-icons.svg#map"></use>
 						</svg>
@@ -292,8 +298,8 @@ import "../styles/header.css"; // Подключаем общие стили
 					</a>
 				</li>
 				<li class="nav-item sell-moto">
-					<a href="#">
-						<svg class="nav-icon" width="20" height="20">
+					<a href="/vykup-motociklov">
+						<svg class="nav-icon" width="22" height="22">
 							<use href="/ui-icons.svg#motorcycle--fill"></use>
 						</svg>
 						<span>Продать мотоцикл</span>
@@ -302,4 +308,189 @@ import "../styles/header.css"; // Подключаем общие стили
 			</ul>
 		</div>
 	</nav>
+
+	<Offcanvas id="mobile-menu" side="left">
+		<div class="mobile-menu-container">
+			<div class="mobile-search-area">
+				<div class="search-field">
+					<input
+						type="text"
+						id="mobile-search-input"
+						placeholder="Поиск запчастей в каталоге"
+					/>
+					<svg
+						class="search-icon"
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						><circle cx="11" cy="11" r="8"></circle><line
+							x1="21"
+							y1="21"
+							x2="16.65"
+							y2="16.65"></line></svg
+					>
+				</div>
+				<button class="where-to-search">
+					ГДЕ ИСКАТЬ? <svg
+						width="12"
+						height="12"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg
+					>
+				</button>
+			</div>
+
+			<nav class="mobile-nav-list">
+				<a href="/" class="mobile-nav-item">
+					<span class="mobile-nav-content">
+						<svg class="mobile-nav-icon" width="18" height="18">
+							<use href="/ui-icons.svg#home"></use>
+						</svg>
+						Главная
+					</span>
+				</a>
+				<a href="/shop" class="mobile-nav-item">
+					<span class="mobile-nav-content">
+						<svg class="mobile-nav-icon" width="18" height="18">
+							<use href="/ui-icons.svg#cog"></use>
+						</svg>
+						Каталог запчастей
+					</span>
+				</a>
+
+				<div class="mobile-nav-item mobile-has-dropdown">
+					<div class="mobile-nav-content">
+						<a href="/about">
+							<svg class="mobile-nav-icon" width="19" height="19">
+								<use href="/ui-icons.svg#puzzle-piece"></use>
+							</svg>
+							О компании
+						</a>
+					</div>
+					<button class="mobile-dropdown-toggle" aria-label="Раскрыть">
+						<svg
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							><polyline points="9 18 15 12 9 6"></polyline></svg
+						>
+					</button>
+					<ul class="mobile-submenu">
+						<li><a href="/reviews">Отзывы</a></li>
+						<li><a href="/blog">Новости</a></li>
+						<li><a href="/payment-and-delivery">Оплата и доставка</a></li>
+					</ul>
+				</div>
+
+				<a href="/motopodbor" class="mobile-nav-item">
+					<span class="mobile-nav-content">
+						<svg class="mobile-nav-icon" width="19" height="19">
+							<use href="/ui-icons.svg#asset--view"></use>
+						</svg>
+						Мотоподбор
+					</span>
+				</a>
+
+				<a href="/motoservis" class="mobile-nav-item">
+					<span class="mobile-nav-content">
+						<svg class="mobile-nav-icon" width="19" height="19">
+							<use href="/ui-icons.svg#wrench"></use>
+						</svg>
+						Мотосервис
+					</span>
+				</a>
+
+				<a href="/motoevakuator" class="mobile-nav-item">
+					<span class="mobile-nav-content">
+						<svg class="mobile-nav-icon" width="19" height="19">
+							<use href="/ui-icons.svg#delivery-truck"></use>
+						</svg>
+						Мотоэвакуатор
+					</span>
+				</a>
+
+				<a href="/vykup-motociklov" class="mobile-nav-item">
+					<span class="mobile-nav-content">
+						<svg class="mobile-nav-icon" width="20" height="20">
+							<use href="/ui-icons.svg#motorcycle--fill"></use>
+						</svg>
+						Продать мотоцикл
+					</span>
+				</a>
+
+				<a href="/contacts" class="mobile-nav-item">
+					<span class="mobile-nav-content">
+						<svg class="mobile-nav-icon" width="18" height="18">
+							<use href="/ui-icons.svg#map"></use>
+						</svg>
+						Контакты
+					</span>
+				</a>
+
+				<div class="mobile-nav-item mobile-has-dropdown">
+					<div class="mobile-nav-content">
+						<a href="/my-account">
+						<svg class="mobile-nav-icon" width="18" height="18">
+							<use href="/ui-icons.svg#user"></use>
+						</svg>
+						Личный кабинет</a>
+					</div>
+					<button class="mobile-dropdown-toggle" aria-label="Раскрыть">
+						<svg
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							><polyline points="9 18 15 12 9 6"></polyline></svg
+						>
+					</button>
+					<ul class="mobile-submenu">
+						<li><a href="/orders">Заказы</a></li>
+						<li><a href="/wishlist">Избранное</a></li>
+						<li><a href="/edit-address">Адрес доставки</a></li>
+						<li><a href="/edit-account">Настройки</a></li>
+						<li><a href="/customer-logout">Выйти</a></li>
+					</ul>
+				</div>
+
+
+			</nav>
+		</div>
+	</Offcanvas>
+
+	<Offcanvas id="cart-panel" side="right" title="КОРЗИНА">
+		<p>Ваша корзина пока пуста...</p>
+	</Offcanvas>
+
+	<Offcanvas id="login-panel" side="right" title="ВХОД">
+		<form>
+			<input type="text" placeholder="Логин" />
+			<button type="submit">Войти</button>
+		</form>
+	</Offcanvas>
+
+	<script>
+		// Импортируем логики
+		import { initOffcanvas } from "../scripts/offcanvas.js";
+		import { initMobileSubmenus } from "../scripts/mobile-menu.js";
+		import { initActiveMenu } from "../scripts/active-menu.js";
+
+
+		// Инициализируем при загрузке страницы (поддержка Astro View Transitions)
+		// document.addEventListener("astro:page-load", () => {
+		initOffcanvas();
+		initMobileSubmenus();
+		initActiveMenu();
+		// });
+	</script>
 </header>

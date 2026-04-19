@@ -38,3 +38,80 @@ body {
 	text-align: center;
 	font-size: 0.9rem;
 }
+
+.offcanvas {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 1000;
+	visibility: hidden;
+	transition: visibility 0.3s;
+}
+
+.offcanvas.is-active {
+	visibility: visible;
+}
+
+.offcanvas-overlay {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.7);
+	opacity: 0;
+	transition: opacity 0.3s;
+}
+
+.is-active .offcanvas-overlay {
+	opacity: 1;
+}
+
+.offcanvas-content {
+	position: absolute;
+	top: 0;
+	width: 100%;
+	max-width: 320px;
+	height: 100%;
+	background: #fff;
+	box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+	transition: transform 0.3s ease-in-out;
+	display: flex;
+	flex-direction: column;
+}
+
+.offcanvas-left .offcanvas-content {
+	left: 0;
+	transform: translateX(-100%);
+}
+.offcanvas-right .offcanvas-content {
+	right: 0;
+	transform: translateX(100%);
+}
+
+.is-active .offcanvas-content {
+	transform: translateX(0);
+}
+
+.offcanvas-header {
+	padding: 3px 15px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-bottom: 1px solid #eee;
+}
+
+.offcanvas-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 20px;
+}
+
+.close-btn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: #333;
+}
+
+
