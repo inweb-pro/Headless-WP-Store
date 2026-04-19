@@ -101,17 +101,19 @@ body {
 	border-bottom: 1px solid #eee;
 }
 
-.offcanvas-body {
-	flex: 1;
-	overflow-y: auto;
-	padding: 20px;
-}
-
-.close-btn {
+.offcanvas-header .close-btn {
 	background: none;
 	border: none;
 	cursor: pointer;
 	color: #333;
 }
 
-
+.offcanvas-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 20px;
+}
+.offcanvas-title {
+	padding: 15px 5px;
+	margin: 0;
+}
