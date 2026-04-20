@@ -5,7 +5,11 @@ import Breadcrumbs from "../components/Breadcrumbs.astro";
 import LoadMore from "../components/LoadMore.astro";
 
 const { slug } = Astro.params;
-if (slug?.includes(".js") || slug?.includes(".map") || slug?.startsWith("_astro")) {
+if (
+	slug?.includes(".js") ||
+	slug?.includes(".map") ||
+	slug?.startsWith("_astro")
+) {
 	return new Response(null, { status: 404 });
 }
 
@@ -46,119 +50,78 @@ const isCategory = node.__typename === "ProductCategory";
 // Логика крошек (остается без изменений)
 let breadcrumbItems = [];
 if (isCategory) {
-    const ancestors = node.ancestors?.nodes ? [...node.ancestors.nodes].reverse() : [];
-    breadcrumbItems = [...ancestors, { name: node.name, uri: node.uri }];
+	const ancestors = node.ancestors?.nodes
+		? [...node.ancestors.nodes].reverse()
+		: [];
+	breadcrumbItems = [...ancestors, { name: node.name, uri: node.uri }];
 } else {
-    const categories = node.productCategories?.nodes || [];
-    const deepestCategory = categories.reduce((deepest, current) => {
-        const deepestLen = deepest?.ancestors?.nodes?.length || 0;
-        const currentLen = current?.ancestors?.nodes?.length || 0;
-        return currentLen > deepestLen ? current : deepest;
-    }, categories[0]);
-    if (deepestCategory) {
-        const ancestors = deepestCategory.ancestors?.nodes ? [...deepestCategory.ancestors.nodes].reverse() : [];
-        breadcrumbItems = [...ancestors, { name: deepestCategory.name, uri: deepestCategory.uri }, { name: node.name, uri: node.uri }];
-    } else {
-        breadcrumbItems = [{ name: node.name, uri: node.uri }];
-    }
+	const categories = node.productCategories?.nodes || [];
+	const deepestCategory = categories.reduce((deepest, current) => {
+		const deepestLen = deepest?.ancestors?.nodes?.length || 0;
+		const currentLen = current?.ancestors?.nodes?.length || 0;
+		return currentLen > deepestLen ? current : deepest;
+	}, categories[0]);
+	if (deepestCategory) {
+		const ancestors = deepestCategory.ancestors?.nodes
+			? [...deepestCategory.ancestors.nodes].reverse()
+			: [];
+		breadcrumbItems = [
+			...ancestors,
+			{ name: deepestCategory.name, uri: deepestCategory.uri },
+			{ name: node.name, uri: node.uri },
+		];
+	} else {
+		breadcrumbItems = [{ name: node.name, uri: node.uri }];
+	}
 }
 ---
 
 <ShopLayout title={node.name} currentUri={node.uri}>
 	<div class="content-wrapper">
 		<Breadcrumbs items={breadcrumbItems} />
-		{isCategory ? (
-			<section class="category-view">
-				<h1>{node.name} ({node.count || 0})</h1>
-				<div id="products-grid" class="products-grid">
-					{node.products?.nodes.map((p) => <ProductCard product={p} />)}
-				</div>
-				{node.products?.pageInfo.hasNextPage && (
-					<div class="load-more-container">
-						<LoadMore cursor={node.products.pageInfo.endCursor} slug={finalSlug} api={apiUri} />
+		{
+			isCategory ? (
+				<section class="category-view">
+					<h1>
+						{node.name} ({node.count || 0})
+					</h1>
+					<div id="products-grid" class="products-grid">
+						{node.products?.nodes.map((p) => (
+							<ProductCard product={p} />
+						))}
 					</div>
-				)}
-			</section>
-		) : (
-			<article class="product-detail">
-				<div class="product-main">
-          <div class="product-image">
-						<img src={node.image?.sourceUrl || "/placeholder.jpg"} alt={node.name} />
+					{node.products?.pageInfo.hasNextPage && (
+						<LoadMore
+							cursor={node.products.pageInfo.endCursor}
+							slug={finalSlug}
+						/>
+					)}
+				</section>
+			) : (
+				<article class="product-detail">
+					<div class="product-main">
+						<div class="product-image">
+							<img
+								src={node.image?.sourceUrl || "/placeholder.jpg"}
+								alt={node.name}
+							/>
+						</div>
+
+						<div class="product-info">
+							<h1>{node.name}</h1>
+							<div class="price-box" set:html={node.price} />
+							<button class="buy-btn">В КОРЗИНУ</button>
+
+							{node.description && (
+								<div class="description">
+									<h3>Описание:</h3>
+									<div class="desc-content" set:html={node.description} />
+								</div>
+							)}
+						</div>
 					</div>
-          
-          <div class="product-info">
-						<h1>{node.name}</h1>
-						<div class="price-box" set:html={node.price} />
-						<button class="buy-btn">В КОРЗИНУ</button>
-            
-            {node.description && (
-              <div class="description">
-                <h3>Описание:</h3>
-                <div class="desc-content" set:html={node.description} />
-              </div>
-            )}
-					</div>
-				</div>
-			</article>
-		)}
+				</article>
+			)
+		}
 	</div>
 </ShopLayout>
-
-<script>
-	const btn = document.getElementById("load-more-btn") as HTMLButtonElement;
-	const grid = document.getElementById("products-grid");
-
-	if (btn && grid) {
-		const apiUri = btn.getAttribute("data-api")!;
-		const slug = btn.getAttribute("data-slug")!;
-    const defaultContent = btn.querySelector('.btn-default-content') as HTMLElement;
-    const loadingContent = btn.querySelector('.btn-loading-content') as HTMLElement;
-
-		btn.addEventListener("click", async () => {
-			const cursor = btn.getAttribute("data-cursor");
-			btn.disabled = true;
-      btn.classList.add('is-loading');
-      defaultContent.style.display = 'none';
-      loadingContent.style.display = 'flex';
-
-			try {
-				const res = await fetch(apiUri, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						query: `query LoadMoreCat($id: ID!, $after: String) {
-              productCategory(id: $id, idType: SLUG) {
-                products(first: 12, after: $after) {
-                  pageInfo { hasNextPage, endCursor }
-                  nodes { name, uri, ... on ProductWithPricing { price }, image { sourceUrl } }
-                }
-              }
-            }`,
-						variables: { id: slug, after: cursor },
-					}),
-				});
-				const { data } = await res.json();
-				const next = data.productCategory.products;
-
-				next.nodes.forEach((p: any) => {
-					const container = document.createElement("div");
-					container.innerHTML = `<article class="product-card"><a href="${p.uri}" class="product-link"><div class="image-wrapper"><img src="${p.image?.sourceUrl || "/placeholder.jpg"}" alt="${p.name}" loading="lazy" /></div><h3 class="product-name">${p.name}</h3><p class="product-price">${p.price || "Цена по запросу"}</p></a></article>`;
-					grid.appendChild(container.firstElementChild!);
-				});
-
-				if (next.pageInfo.hasNextPage) {
-					btn.setAttribute("data-cursor", next.pageInfo.endCursor);
-          btn.disabled = false;
-          btn.classList.remove('is-loading');
-          defaultContent.style.display = 'flex';
-          loadingContent.style.display = 'none';
-				} else {
-					btn.remove();
-				}
-			} catch (e) {
-				console.error(e);
-        btn.disabled = false;
-			}
-		});
-	}
-</script>

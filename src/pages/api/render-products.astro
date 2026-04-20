@@ -1,0 +1,49 @@
+---
+// Эндпоинт возвращает фрагмент HTML
+export const partial = true;
+
+import ProductCard from "../../components/ProductCard.astro";
+
+const apiUri = import.meta.env.WORDPRESS_API_URL;
+const { searchParams } = new URL(Astro.request.url);
+const cursor = searchParams.get("cursor");
+const slug = searchParams.get("slug");
+
+// Формируем GraphQL запрос в зависимости от контекста (категория или общий список)
+const query = slug
+	? `query LoadMoreCat($id: ID!, $after: String) {
+      productCategory(id: $id, idType: SLUG) {
+        products(first: 12, after: $after) {
+          pageInfo { hasNextPage, endCursor }
+          nodes { name, uri, ... on ProductWithPricing { price }, image { sourceUrl } }
+        }
+      }
+    }`
+	: `query LoadMore($after: String) {
+      products(first: 12, after: $after) {
+        pageInfo { hasNextPage, endCursor }
+        nodes { name, uri, ... on ProductWithPricing { price }, image { sourceUrl } }
+      }
+    }`;
+
+const variables = slug ? { id: slug, after: cursor } : { after: cursor };
+
+const res = await fetch(apiUri, {
+	method: "POST",
+	headers: { "Content-Type": "application/json" },
+	body: JSON.stringify({ query, variables }),
+});
+
+const { data } = await res.json();
+const productsData = slug ? data.productCategory.products : data.products;
+---
+
+{productsData.nodes.map((p) => <ProductCard product={p} />)}
+
+<div
+	id="pagination-metadata"
+	data-next-page={productsData.pageInfo.hasNextPage}
+	data-cursor={productsData.pageInfo.endCursor}
+	style="display: none;"
+>
+</div>
