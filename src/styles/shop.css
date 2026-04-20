@@ -186,7 +186,7 @@
 
 .product-card {
 	border: 1px solid #eee;
-	transition: shadow 0.3s;
+	transition: box-shadow 0.3s;
 	padding: 10px;
 }
 .product-card:hover {
@@ -208,4 +208,71 @@
 }
 .product-link {
 	text-decoration: none;
+}
+
+.load-more-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	max-width: 250px;
+	margin: 50px auto;
+	padding: 14px 25px;
+	background: #fff;
+	border: 2px solid var(--color-primary, #ffdd00);
+	color: #333;
+	font-family: "PT Sans Caption", sans-serif;
+	font-weight: 700;
+	font-size: 14px;
+	text-transform: uppercase;
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.btn-default-content {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+}
+
+.btn-loading-content {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	color: #777;
+}
+
+.load-more-btn.is-loading {
+	border-color: #eee;
+	cursor: not-allowed;
+}
+
+.spinner {
+	animation: rotate 2s linear infinite;
+}
+
+.spinner .path {
+	stroke: #999;
+	stroke-linecap: round;
+	animation: dash 1.5s ease-in-out infinite;
+}
+
+@keyframes rotate {
+	100% {
+		transform: rotate(360deg);
+	}
+}
+@keyframes dash {
+	0% {
+		stroke-dasharray: 1, 150;
+		stroke-dashoffset: 0;
+	}
+	50% {
+		stroke-dasharray: 90, 150;
+		stroke-dashoffset: -35;
+	}
+	100% {
+		stroke-dasharray: 90, 150;
+		stroke-dashoffset: -124;
+	}
 }
