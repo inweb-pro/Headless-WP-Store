@@ -1,43 +1,43 @@
-import { defineConfig } from 'astro/config';
-import node from '@astrojs/node'; // Импортируем адаптер для Node.js
+import { defineConfig } from "astro/config";
+import node from "@astrojs/node"; // Импортируем адаптер для Node.js
 
 // https://astro.build/config
 export default defineConfig({
-  devToolbar: { enabled: false },
-  
-  // Устанавливаем режим вывода на серверный (SSR)
-  output: 'server',
+	devToolbar: { enabled: false },
 
-  // Настраиваем адаптер для работы на VPS
-  adapter: node({
-    mode: 'standalone', // Проект будет запускаться как самостоятельное Node-приложение
-  }),
+	// Устанавливаем режим вывода на серверный (SSR)
+	output: "server",
 
-	trailingSlash: 'never', // Указываем Astro никогда не добавлять слэш в конце URL
+	// Настраиваем адаптер для работы на VPS
+	adapter: node({
+		mode: "standalone", // Проект будет запускаться как самостоятельное Node-приложение
+	}),
 
-  // Настройки Vite для локальной разработки
-  vite: {
-    server: {
-      // Разрешаем работу через наш локальный домен
-      allowedHosts: ['motopuzzle.local', 'api-motopuzzle.local'],
-    },
-    // Опционально: если столкнешься с проблемами кэширования в браузере
-    optimizeDeps: {
-      exclude: ['@astrojs/node'],
-    },
-  },
+	trailingSlash: "never", // Указываем Astro никогда не добавлять слэш в конце URL
 
-  // Если в будущем планируешь использовать изображения через Astro.Image
-  image: {
-    remotePatterns: [
-      {
-        protocol: 'http',
-        hostname: 'api-motopuzzle.local',
-      },
-      {
-        protocol: 'https',
-        hostname: 'api-motopuzzle.local',
-      },
-    ],
-  },
+	// Настройки Vite для локальной разработки
+	vite: {
+		server: {
+			// Разрешаем работу через наш локальный домен
+			allowedHosts: ["motopuzzle.local", "api-motopuzzle.local"],
+		},
+		// Опционально: если столкнешься с проблемами кэширования в браузере
+		optimizeDeps: {
+			exclude: ["@astrojs/node"],
+		},
+	},
+
+	// Если в будущем планируешь использовать изображения через Astro.Image
+	image: {
+		remotePatterns: [
+			{
+				protocol: "http",
+				hostname: "api-motopuzzle.local",
+			},
+			{
+				protocol: "https",
+				hostname: "api-motopuzzle.local",
+			},
+		],
+	},
 });

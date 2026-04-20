@@ -136,7 +136,7 @@
 
 .count-badge.highlight {
 	background: #ffcc00; /* Желтый как на скриншоте */
-	color: #000;
+	color: #555;
 	font-weight: bold;
 	border-color: transparent;
 }

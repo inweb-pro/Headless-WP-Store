@@ -150,3 +150,31 @@ body > main {
 }
 
 
+/* Ширина всей полосы прокрутки */
+*::-webkit-scrollbar {
+  width: 6px; /* Делаем её тонкой, как на скриншоте */
+}
+
+/* Цвет дорожки (трека), по которой движется ползунок */
+*::-webkit-scrollbar-track {
+  background: #f1f1f1; /* Светло-серый фон */
+}
+
+/* Цвет самого ползунка (thumb) */
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-primary, #ffdd00); /* Твой желтый цвет */
+  border-radius: 0; /* Оставляем прямые углы для строгого вида */
+}
+
+/* Эффект при наведении на ползунок */
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #e6c700; /* Чуть темнее при наведении */
+}
+
+/* --- Стилизация для Firefox --- */
+/* Firefox поддерживает только базовую настройку цвета и ширины */
+
+* {
+  scrollbar-width: thin; /* Делает полосу тонкой */
+  scrollbar-color: var(--color-primary, #ffdd00) #f1f1f1; /* Ползунок и Дорожка */
+}
