@@ -2,10 +2,14 @@
 import ShopLayout from "../layouts/ShopLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
+import LoadMore from "../components/LoadMore.astro"; // Импорт компонента
 
 const { slug } = Astro.params;
-
-if (slug?.includes(".js") || slug?.includes(".map") || slug?.startsWith("_astro")) {
+if (
+	slug?.includes(".js") ||
+	slug?.includes(".map") ||
+	slug?.startsWith("_astro")
+) {
 	return new Response(null, { status: 404 });
 }
 
@@ -20,45 +24,16 @@ const response = await fetch(apiUri, {
 		query: `
       query GetNode($id: ID!) {
         productCategory(id: $id, idType: SLUG) {
-          __typename
-          name
-          uri
-          count
-          ancestors {
-            nodes {
-              name
-              uri
-            }
-          }
+          __typename, name, uri, count
+          ancestors { nodes { name, uri } }
           products(first: 12) {
             pageInfo { hasNextPage, endCursor }
-            nodes { 
-              name 
-              uri 
-              ... on ProductWithPricing { price } 
-              image { sourceUrl } 
-            }
+            nodes { name, uri, ... on ProductWithPricing { price }, image { sourceUrl } }
           }
         }
         product(id: $id, idType: SLUG) {
-          __typename
-          name
-          uri
-          description
-          ... on ProductWithPricing { price }
-          image { sourceUrl }
-          productCategories { 
-            nodes { 
-              name 
-              uri 
-              ancestors {
-                nodes {
-                  name
-                  uri
-                }
-              }
-            } 
-          }
+          __typename, name, uri, description, ... on ProductWithPricing { price }, image { sourceUrl }
+          productCategories { nodes { name, uri, ancestors { nodes { name, uri } } } }
         }
       }
     `,
@@ -68,79 +43,63 @@ const response = await fetch(apiUri, {
 
 const { data } = await response.json();
 const node = data?.productCategory || data?.product;
-
 if (!node) return Astro.redirect("/404");
 
 const isCategory = node.__typename === "ProductCategory";
-
-// ФОРМИРОВАНИЕ ПОЛНОЙ ЦЕПОЧКИ КРОШЕК
 let breadcrumbItems = [];
-
 if (isCategory) {
-    // Для страницы категории/подкатегории
-    const ancestors = node.ancestors?.nodes ? [...node.ancestors.nodes].reverse() : [];
-    breadcrumbItems = [...ancestors, { name: node.name, uri: node.uri }];
+	const ancestors = node.ancestors?.nodes
+		? [...node.ancestors.nodes].reverse()
+		: [];
+	breadcrumbItems = [...ancestors, { name: node.name, uri: node.uri }];
 } else {
-    // Для страницы товара: ищем самую глубокую категорию
-    const categories = node.productCategories?.nodes || [];
-    
-    const deepestCategory = categories.reduce((deepest, current) => {
-        const deepestLen = deepest?.ancestors?.nodes?.length || 0;
-        const currentLen = current?.ancestors?.nodes?.length || 0;
-        return currentLen > deepestLen ? current : deepest;
-    }, categories[0]);
-
-    if (deepestCategory) {
-        const ancestors = deepestCategory.ancestors?.nodes ? [...deepestCategory.ancestors.nodes].reverse() : [];
-        breadcrumbItems = [
-            ...ancestors, 
-            { name: deepestCategory.name, uri: deepestCategory.uri }, 
-            { name: node.name, uri: node.uri }
-        ];
-    } else {
-        breadcrumbItems = [{ name: node.name, uri: node.uri }];
-    }
+	const categories = node.productCategories?.nodes || [];
+	const deepestCategory = categories.reduce((deepest, current) => {
+		const deepestLen = deepest?.ancestors?.nodes?.length || 0;
+		const currentLen = current?.ancestors?.nodes?.length || 0;
+		return currentLen > deepestLen ? current : deepest;
+	}, categories[0]);
+	if (deepestCategory) {
+		const ancestors = deepestCategory.ancestors?.nodes
+			? [...deepestCategory.ancestors.nodes].reverse()
+			: [];
+		breadcrumbItems = [
+			...ancestors,
+			{ name: deepestCategory.name, uri: deepestCategory.uri },
+			{ name: node.name, uri: node.uri },
+		];
+	} else {
+		breadcrumbItems = [{ name: node.name, uri: node.uri }];
+	}
 }
 ---
 
 <ShopLayout title={node.name} currentUri={node.uri}>
 	<div class="content-wrapper">
 		<Breadcrumbs items={breadcrumbItems} />
-
 		{
 			isCategory ? (
 				<section class="category-view">
-					<h1>{node.name} ({node.count || 0})</h1>
+					<h1>
+						{node.name} ({node.count || 0})
+					</h1>
 					<div id="products-grid" class="products-grid">
-						{node.products?.nodes.map((p) => <ProductCard product={p} />)}
+						{node.products?.nodes.map((p) => (
+							<ProductCard product={p} />
+						))}
 					</div>
-
 					{node.products?.pageInfo.hasNextPage && (
 						<div class="load-more-container">
-							<button
-								id="load-more-btn"
-								class="load-more-btn"
-								data-cursor={node.products.pageInfo.endCursor}
-								data-slug={finalSlug}
-								data-api={apiUri}
-							>
-								Загрузить еще
-							</button>
+							<LoadMore
+								cursor={node.products.pageInfo.endCursor}
+								slug={finalSlug}
+								api={apiUri}
+							/>
 						</div>
 					)}
 				</section>
 			) : (
-				<article class="product-detail">
-					<div class="product-main">
-						<img src={node.image?.sourceUrl || "/placeholder.jpg"} alt={node.name} />
-						<div class="product-info">
-							<h1>{node.name}</h1>
-							<div class="price" set:html={node.price} />
-							<button class="buy-btn">В корзину</button>
-							<div class="description" set:html={node.description} />
-						</div>
-					</div>
-				</article>
+				<article class="product-detail"></article>
 			)
 		}
 	</div>
@@ -153,11 +112,19 @@ if (isCategory) {
 	if (btn && grid) {
 		const apiUri = btn.getAttribute("data-api")!;
 		const slug = btn.getAttribute("data-slug")!;
+		const defaultContent = btn.querySelector(
+			".btn-default-content",
+		) as HTMLElement;
+		const loadingContent = btn.querySelector(
+			".btn-loading-content",
+		) as HTMLElement;
 
 		btn.addEventListener("click", async () => {
 			const cursor = btn.getAttribute("data-cursor");
 			btn.disabled = true;
-			btn.innerText = "Загрузка...";
+			btn.classList.add("is-loading");
+			defaultContent.style.display = "none";
+			loadingContent.style.display = "flex";
 
 			try {
 				const res = await fetch(apiUri, {
@@ -168,12 +135,7 @@ if (isCategory) {
               productCategory(id: $id, idType: SLUG) {
                 products(first: 12, after: $after) {
                   pageInfo { hasNextPage, endCursor }
-                  nodes { 
-                    name 
-                    uri 
-                    ... on ProductWithPricing { price } 
-                    image { sourceUrl } 
-                  }
+                  nodes { name, uri, ... on ProductWithPricing { price }, image { sourceUrl } }
                 }
               }
             }`,
@@ -185,30 +147,21 @@ if (isCategory) {
 
 				next.nodes.forEach((p: any) => {
 					const container = document.createElement("div");
-					container.innerHTML = `
-            <article class="product-card">
-              <a href="${p.uri}" class="product-link">
-                <div class="image-wrapper">
-                  <img src="${p.image?.sourceUrl || "/placeholder.jpg"}" alt="${p.name}" loading="lazy" />
-                </div>
-                <h3 class="product-name">${p.name}</h3>
-                <p class="product-price">${p.price || "Цена по запросу"}</p>
-              </a>
-            </article>
-          `;
+					container.innerHTML = `<article class="product-card"><a href="${p.uri}" class="product-link"><div class="image-wrapper"><img src="${p.image?.sourceUrl || "/placeholder.jpg"}" alt="${p.name}" loading="lazy" /></div><h3 class="product-name">${p.name}</h3><p class="product-price">${p.price || "Цена по запросу"}</p></a></article>`;
 					grid.appendChild(container.firstElementChild!);
 				});
 
 				if (next.pageInfo.hasNextPage) {
 					btn.setAttribute("data-cursor", next.pageInfo.endCursor);
-					btn.innerText = "Загрузить еще";
 					btn.disabled = false;
+					btn.classList.remove("is-loading");
+					defaultContent.style.display = "flex";
+					loadingContent.style.display = "none";
 				} else {
 					btn.remove();
 				}
 			} catch (e) {
 				console.error(e);
-				btn.innerText = "Ошибка";
 				btn.disabled = false;
 			}
 		});
