@@ -1,8 +1,8 @@
 .shop-layout {
 	display: grid;
-	grid-template-columns: 280px 1fr;
-	gap: 40px;
-	margin: 40px auto;
+	grid-template-columns: 270px 1fr;
+	gap: 35px;
+	margin-top: 30px !important;
 }
 @media (max-width: 768px) {
 	.shop-layout {
@@ -38,14 +38,14 @@
 .sidebar {
 	padding: 1rem;
 	background: #f9f9f9;
-	border-radius: 8px;
+	border-radius: 5px;
 }
 .sidebar-title {
 	font-size: 1.2rem;
 	border-bottom: 2px solid #eee;
-	padding-bottom: 5px;
+	padding-bottom: 8px;
 	display: inline-block;
-	margin: 10px 0 15px;
+	margin: 0 0 5px;
 }
 .cat-list {
 	list-style: none;
