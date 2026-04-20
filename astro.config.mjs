@@ -3,10 +3,8 @@ import node from "@astrojs/node"; // Импортируем адаптер дл�
 
 // https://astro.build/config
 export default defineConfig({
-	devToolbar: { enabled: false },
-
-	// Устанавливаем режим вывода на серверный (SSR)
-	output: "server",
+  // Устанавливаем режим вывода на серверный (SSR)
+  output: 'server',
 
 	// Настраиваем адаптер для работы на VPS
 	adapter: node({
