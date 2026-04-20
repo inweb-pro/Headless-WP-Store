@@ -135,10 +135,10 @@
 }
 
 .count-badge.highlight {
-	background: #ffcc00; /* Желтый как на скриншоте */
-	color: #000;
+	background: rgba(255, 204, 0, 0.55); /* Желтый как на скриншоте */
+	color: #444;
 	font-weight: bold;
-	border-color: transparent;
+	border-color: var(--color-primary);
 }
 
 .sub-cat-item {
