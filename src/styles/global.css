@@ -1,7 +1,23 @@
+*, *::before, *::after {
+	box-sizing: border-box;
+}
+
 :root {
 	--color-primary: #ffdd00;
 	--dark: #333;
 	--container: 1320px;
+	--scrollbar-width: 0px;
+}
+
+/* Остальные стили без изменений */
+body.lock-scroll {
+	overflow: hidden !important;
+	padding-right: var(--scrollbar-width) !important;
+}
+
+#sticky-header.lock-padding {
+	/* !important здесь важен, чтобы перебить инлайновые стили или специфичность */
+	padding-right: var(--scrollbar-width) !important;
 }
 body {
 	font-family: "PT Sans Caption", sans-serif;
@@ -58,7 +74,7 @@ body {
 	position: absolute;
 	width: 100%;
 	height: 100%;
-	background: rgba(0, 0, 0, 0.7);
+	background: rgba(0, 0, 0, 0.8);
 	opacity: 0;
 	transition: opacity 0.3s;
 }

@@ -1,0 +1,135 @@
+<button id="back-to-top" class="back-to-top" aria-label="Наверх">
+	<svg class="progress-circle" width="50" height="50" viewBox="0 0 100 100">
+		<path
+			id="progress-path"
+			class="progress-path"
+			d="M50,10 a40,40 0 0,1 0,80 a40,40 0 0,1 0,-80"
+			style="transition: stroke-dashoffset 10ms linear 0s; stroke-dasharray: 307.919, 307.919; stroke-dashoffset: 307.919;"
+		>
+		</path>
+	</svg>
+	<div class="arrow-icon">
+		<svg
+			width="20"
+			height="20"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="3"
+		>
+			<polyline points="18 15 12 9 6 15"></polyline>
+		</svg>
+	</div>
+</button>
+
+<style>
+	.back-to-top {
+		position: fixed;
+		bottom: 30px;
+		right: 30px;
+		width: 50px;
+		height: 50px;
+		background: #fff;
+		border-radius: 50%;
+		border: none;
+		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+		cursor: pointer;
+		z-index: 999;
+		opacity: 0;
+		visibility: hidden;
+		transform: translateY(20px);
+		transition: all 0.3s ease;
+		padding: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.back-to-top.is-visible {
+		opacity: 1;
+		visibility: visible;
+		transform: translateY(0);
+	}
+
+	.back-to-top:hover {
+		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+	}
+
+	.progress-circle {
+		position: absolute;
+		top: 0;
+		left: 0;
+	}
+
+	.progress-path {
+		fill: none;
+		stroke: var(--color-primary, #ffdd00); /* Твой желтый цвет */
+		stroke-width: 4;
+	}
+
+	/* Фоновый круг для дорожки (опционально) */
+	.progress-circle::before {
+		content: "";
+		position: absolute;
+		width: 80%;
+		height: 80%;
+		border: 4px solid #f0f0f0;
+		border-radius: 50%;
+	}
+
+	.arrow-icon {
+		color: #828282;
+		transition: transform 0.3s ease;
+	}
+
+	.back-to-top:hover .arrow-icon {
+		transform: scale(1.2);
+		color: var(--color-primary);
+	}
+</style>
+
+<script>
+	function initBackToTop() {
+		const btn = document.getElementById("back-to-top");
+		const path = document.getElementById(
+			"progress-path",
+		) as unknown as SVGPathElement;
+
+		if (!btn || !path) return;
+
+		// Длина пути круга (2 * PI * R)
+		const pathLength = path.getTotalLength();
+
+		// Порог появления кнопки
+		const offset = 150;
+
+		const updateProgress = () => {
+			const scroll = window.pageYOffset;
+			const height = document.documentElement.scrollHeight - window.innerHeight;
+
+			// Вычисляем прогресс
+			const progress = pathLength - (scroll * pathLength) / height;
+			path.style.strokeDashoffset = progress.toString();
+
+			// Показываем/скрываем кнопку
+			if (scroll > offset) {
+				btn.classList.add("is-visible");
+			} else {
+				btn.classList.remove("is-visible");
+			}
+		};
+
+		// Плавный скролл наверх
+		btn.onclick = () => {
+			window.scrollTo({ top: 0, behavior: "smooth" });
+		};
+
+		window.addEventListener("scroll", updateProgress, { passive: true });
+		updateProgress(); // Вызов при загрузке
+	}
+
+	// Инициализация с поддержкой View Transitions
+	document.addEventListener("astro:page-load", initBackToTop);
+	// На случай, если View Transitions не используются
+	initBackToTop();
+</script>
