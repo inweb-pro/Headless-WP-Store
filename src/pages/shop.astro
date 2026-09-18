@@ -23,7 +23,7 @@ const totalCount = products?.found || 0;
 		<section class="catalog-view">
 			<h1>Все товары (<span>{totalCount}</span>)</h1>
 			<div id="products-grid" class="products-grid">
-				{products?.nodes.map((p) => <ProductCard product={p} />)}
+				{products?.nodes.map((p) => <ProductCard product={p} variant="v1" />)}
 			</div>
 			{
 				products?.pageInfo.hasNextPage && (

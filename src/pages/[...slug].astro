@@ -87,7 +87,7 @@ if (isCategory) {
 					</h1>
 					<div id="products-grid" class="products-grid">
 						{node.products?.nodes.map((p) => (
-							<ProductCard product={p} />
+							<ProductCard product={p} variant="v1" />
 						))}
 					</div>
 					{node.products?.pageInfo.hasNextPage && (

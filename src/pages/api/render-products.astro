@@ -38,7 +38,7 @@ const { data } = await res.json();
 const productsData = slug ? data.productCategory.products : data.products;
 ---
 
-{productsData.nodes.map((p) => <ProductCard product={p} />)}
+{productsData.nodes.map((p) => <ProductCard product={p} variant="v1" />)}
 
 <div
 	id="pagination-metadata"

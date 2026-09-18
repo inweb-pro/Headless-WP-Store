@@ -1,18 +1,14 @@
 ---
-const { product } = Astro.props;
-const price = product.price || "Цена по запросу"; 
+import ProductCardV1 from "./product-cards/ProductCardV1.astro";
+// import ProductCardV2 from "./product-cards/ProductCardV2.astro";
+
+interface Props {
+  product: any;
+  variant?: 'v1' | 'v2';
+}
+
+const { product, variant = 'v1' } = Astro.props;
 ---
 
-<article class="product-card">
-  <a href={product.uri} class="product-link">
-    <div class="image-wrapper">
-      <img 
-        src={product.image?.sourceUrl || '/placeholder.jpg'} 
-        alt={product.name} 
-        loading="lazy" 
-      />
-    </div>
-    <h3 class="product-name">{product.name}</h3>
-    <p class="product-price" set:html={price}></p>
-  </a>
-</article>
+{variant === 'v1' && <ProductCardV1 product={product} />}
+<!-- {variant === 'v2' && <ProductCardV2 product={product} />} -->

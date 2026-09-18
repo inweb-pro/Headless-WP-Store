@@ -36,7 +36,7 @@ const latestProducts = data?.products?.nodes || [];
 	<section class="featured">
 		<h2>Новые поступления</h2>
 		<div class="products-grid">
-			{latestProducts.map((p) => <ProductCard product={p} />)}
+			{latestProducts.map((p) => <ProductCard product={p} variant="v2" />)}
 		</div>
 	</section>
 </PageLayout>
