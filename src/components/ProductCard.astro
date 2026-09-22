@@ -1,15 +1,18 @@
 ---
+// src/components/ProductCard.astro
 import ProductCardV1 from "./product-cards/ProductCardV1.astro";
-// import ProductCardV2 from "./product-cards/ProductCardV2.astro";
+import ProductCardV2 from "./product-cards/ProductCardV2.astro";
+import ProductCardV3 from "./product-cards/ProductCardV3.astro";
 
 interface Props {
   product: any;
-  variant?: 'v1' | 'v2';
+  variant?: 'v1' | 'v2' | 'v3';
   priority?: boolean;
 }
 
-const { product, variant = 'v1', priority = false } = Astro.props;
+const { product, variant = 'v3', priority = false } = Astro.props;
 ---
 
 {variant === 'v1' && <ProductCardV1 product={product} priority={priority} />}
-<!-- {variant === 'v2' && <ProductCardV2 product={product} />} -->
+{variant === 'v2' && <ProductCardV2 product={product} priority={priority} />}
+{variant === 'v3' && <ProductCardV3 product={product} priority={priority} />}

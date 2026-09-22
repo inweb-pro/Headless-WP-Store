@@ -1,0 +1,435 @@
+---
+// src/components/product-cards/ProductCardV3.astro
+import AppImage from "../AppImage.astro";
+
+function cleanPrice(p: string | null | undefined): string {
+	if (!p) return '';
+	return p.replace(/&nbsp;/gi, ' ').replace(/\u00a0/g, ' ').replace(/&#8381;/gi, '₽').trim();
+}
+
+interface Props {
+	product: any;
+	priority?: boolean;
+}
+
+const { product, priority = false } = Astro.props;
+const price = product.price || "Цена по запросу";
+---
+
+<article class="product-card product-card--v3">
+	<div class="product-card__inner">
+		<div class="image-wrapper">
+			<a href={product.uri} class="image-link" aria-label={product.name}>
+				<AppImage
+					src={product.image?.sourceUrl}
+					alt={product.name}
+					width={320}
+					height={200}
+					aspectRatio="320/200"
+					widths={[320, 480, 640]}
+					sizes="(max-width: 480px) 100vw, (max-width: 768px) 50vw, (max-width: 1200px) 33vw, 300px"
+					priority={priority}
+					quality={82}
+					fit="cover"
+					class="card-image"
+				/>
+			</a>
+
+			<button
+				type="button"
+				class="wishlist-btn"
+				aria-label="Добавить в избранное"
+				data-wishlist-add={product.databaseId}
+				data-product-name={product.name}
+				data-product-price={cleanPrice(price)}
+				data-product-image={product.image?.sourceUrl || ''}
+				data-product-uri={product.uri}
+			>
+				<svg
+					width="18"
+					height="18"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path
+						d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+					></path>
+				</svg>
+			</button>
+		</div>
+
+		<div class="product-info">
+			<h3 class="product-name">
+				<a href={product.uri} class="product-link">
+					{product.name}
+				</a>
+			</h3>
+			<p class="product-price" set:html={price} />
+		</div>
+
+		<div class="cart-action">
+			<button
+				type="button"
+				class="add-to-cart-btn"
+				data-add-to-cart={product.databaseId}
+				aria-label="Добавить в корзину"
+			>
+				<span class="btn-content-wrapper">
+					<span class="btn-text">В КОРЗИНУ</span>
+					<span class="btn-icon">
+						<svg
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<circle cx="9" cy="21" r="1"></circle>
+							<circle cx="20" cy="21" r="1"></circle>
+							<path
+								d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"
+							></path>
+						</svg>
+					</span>
+				</span>
+			</button>
+		</div>
+	</div>
+</article>
+
+<style lang="scss">
+	.product-card {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		z-index: 1;
+
+		&__inner {
+			background: #ffffff;
+			border: 1px solid #e8e8e8;
+			border-radius: 14px;
+			padding: 6px;
+			display: flex;
+			flex-direction: column;
+			flex: 1;
+			box-sizing: border-box;
+			position: relative;
+			transform-origin: center center;
+			box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+			transition: background-color 0.25s ease,
+						transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+						box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+						border-color 0.22s ease;
+		}
+
+		/* Десктопный hover: заметный зум 1.15, подъем, белый фон и бесшовный подвал с тенью */
+		@media (hover: hover) and (min-width: 769px) {
+			&:hover {
+				z-index: 100; /* Карточка уверенно перекрывает соседние блоки */
+
+				.product-card__inner {
+					transform: translateY(-14px) scale(1.15); /* Заметное приближение карточки */
+					box-shadow: 0 18px 55px rgba(0, 0, 0, 0.32), 0 6px 18px rgba(0, 0, 0, 0.14);
+					border-color: var(--color-primary, #ffdd00); /* Акцентная рамка для четкого выделения */
+					border-bottom: none !important;
+					border-bottom-left-radius: 0 !important;
+					border-bottom-right-radius: 0 !important;
+					background: #ffffff !important;
+				}
+
+				.product-name a {
+					color: #111;
+					text-decoration: underline;
+					text-decoration-color: var(--color-primary, #ffdd00);
+					text-decoration-thickness: 2px;
+					text-underline-offset: 3px;
+				}
+
+				.wishlist-btn {
+					opacity: 1;
+				}
+
+				/* Выпадающая кнопка наплывает на следующую карточку: бесшовный подвал */
+				.cart-action {
+					opacity: 1;
+					visibility: visible;
+					transform: translateY(0);
+					border-color: var(--color-primary, #ffdd00) !important;
+					border-top: none !important;
+					border-radius: 0 0 14px 14px !important;
+					background: #ffffff !important;
+					box-shadow: none !important;
+				}
+
+				.add-to-cart-btn:not(.is-in-cart) {
+					background: #ffd600;
+					box-shadow: 0 4px 14px rgba(255, 214, 0, 0.4);
+				}
+			}
+		}
+
+		/* Блок изображения */
+		.image-wrapper {
+			position: relative;
+			z-index: 1;
+			aspect-ratio: 320 / 200;
+			overflow: hidden;
+			background-color: #f0f0f0;
+			border-radius: 10px;
+			margin-bottom: 8px;
+
+			.image-link {
+				display: block;
+				width: 100%;
+				height: 100%;
+			}
+
+			img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				display: block;
+				transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+			}
+		}
+
+		/* Кнопка избранного */
+		.wishlist-btn {
+			position: absolute;
+			top: 8px;
+			right: 8px;
+			z-index: 5;
+			background: rgba(255, 255, 255, 0.85);
+			backdrop-filter: blur(6px);
+			-webkit-backdrop-filter: blur(6px);
+			border: 1px solid rgba(0, 0, 0, 0.08);
+			border-radius: 50%;
+			width: 32px;
+			height: 32px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			opacity: 0;
+			cursor: pointer;
+			color: #555;
+			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+			transition: opacity 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+			padding: 0;
+
+			&:hover {
+				color: #e44d26;
+				background: #ffffff;
+				border-color: rgba(228, 77, 38, 0.3);
+				transform: scale(1.1);
+			}
+
+			&.is-active {
+				opacity: 1 !important;
+				color: #e44d26;
+				background: #ffffff;
+				border-color: rgba(228, 77, 38, 0.4);
+
+				svg {
+					fill: #e44d26;
+				}
+			}
+		}
+
+		/* Информация о товаре */
+		.product-info {
+			position: relative;
+			z-index: 1;
+			padding: 0 4px;
+			display: flex;
+			flex-direction: column;
+			flex: 1;
+			text-align: center;
+		}
+
+		.product-name {
+			font-family: "Play", sans-serif;
+			font-size: 0.95rem;
+			font-weight: 700;
+			margin: 0 0 6px;
+			line-height: 1.35;
+			height: 2.7em;
+			overflow: hidden;
+
+			.product-link {
+				color: #222;
+				text-decoration: none;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+				transition: color 0.2s ease;
+			}
+		}
+
+		.product-price {
+			margin: auto 0 5px;
+			color: #e44d26;
+			font-weight: 800;
+			font-size: 1.05rem;
+			line-height: 1.2;
+			white-space: nowrap;
+		}
+
+		/* Выпадающий подвал с кнопкой «В КОРЗИНУ» (наплывает на следующую карточку) */
+		.cart-action {
+			position: absolute;
+			top: calc(100% - 2px); /* 2px перекрытие для абсолютной бесшовности без субпиксельных зазоров */
+			left: -1px;
+			right: -1px;
+			background: #ffffff;
+			border: 1px solid #e8e8e8;
+			border-top: none !important;
+			border-radius: 0 0 14px 14px;
+			padding: 0 12px 12px;
+			opacity: 0;
+			visibility: hidden;
+			transform: translateY(-4px);
+			transition: opacity 0.25s ease,
+						transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+						visibility 0.25s ease,
+						border-color 0.22s ease;
+			box-shadow: none;
+			z-index: 101;
+			display: flex;
+			justify-content: center;
+		}
+
+		.add-to-cart-btn {
+			width: 130px; /* Не во всю ширину, как в первом варианте */
+			height: 38px;
+			background: var(--color-primary, #ffdd00);
+			color: #1a1a1a;
+			border: none;
+			border-radius: 8px;
+			cursor: pointer;
+			overflow: hidden;
+			position: relative;
+			font-weight: 700;
+			font-size: 0.85rem;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+
+			.btn-content-wrapper {
+				display: block;
+				width: 100%;
+				height: 100%;
+				position: relative;
+			}
+
+			.btn-text,
+			.btn-icon {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-weight: 700;
+				font-size: 0.85rem;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+			}
+
+			.btn-icon {
+				transform: translateY(100%);
+			}
+
+			@media (hover: hover) and (min-width: 769px) {
+				&:hover {
+					.btn-text {
+						transform: translateY(-100%);
+					}
+					.btn-icon {
+						transform: translateY(0);
+					}
+				}
+			}
+
+			&:active {
+				transform: scale(0.98);
+			}
+
+			&.is-in-cart {
+				background: #f0f0f0 !important;
+				color: #666 !important;
+				border: 1px solid #dcdcdc !important;
+				cursor: default !important;
+				box-shadow: none !important;
+				transform: none !important;
+
+				.btn-text {
+					transform: none !important;
+					font-size: 0.82rem;
+					color: #555 !important;
+					text-transform: uppercase;
+					letter-spacing: 0.5px;
+				}
+
+				.btn-icon {
+					display: none !important;
+				}
+			}
+		}
+
+		/* Мобильные устройства: чистый статический вид, без скейла и прыжков */
+		@media (max-width: 768px), (hover: none) {
+			&:hover .product-card__inner {
+				transform: none !important;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+				border-color: #e8e8e8 !important;
+				background: #ffffff !important;
+				border-radius: 14px !important;
+			}
+
+			&:hover .image-wrapper img {
+				transform: none !important;
+			}
+
+			.wishlist-btn {
+				opacity: 1 !important;
+			}
+
+			.cart-action {
+				position: static !important;
+				opacity: 1 !important;
+				visibility: visible !important;
+				transform: none !important;
+				box-shadow: none !important;
+				border: none !important;
+				padding: 0 12px 10px !important;
+				background: #ffffff !important;
+				display: flex !important;
+				justify-content: center !important;
+			}
+
+			.add-to-cart-btn {
+				width: 130px !important; /* На мобильном аккуратная кнопка по центру */
+				height: 40px !important;
+				transform: none !important;
+
+				.btn-text {
+					transform: none !important;
+				}
+
+				.btn-icon {
+					display: none;
+				}
+			}
+		}
+	}
+</style>

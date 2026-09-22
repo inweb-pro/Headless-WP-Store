@@ -109,15 +109,10 @@ const price = product.price || "Цена по запросу";
 			z-index: 10;
 
 			.product-card__inner {
-				box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3); // 0.12
-				transform: translateY(-22px) scale(1.1);
-				// Чтобы карточка визуально "наплывала" на нижние,
-				// мы не меняем ее размер, а расширяем за счет абсолютной кнопки
-			}
-
-			// При наведении на карточку — увеличиваем картинку
-			.image-wrapper img {
-				transform: scale(1.1); // Умеренный зум
+				box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+				transform: translateY(-4px);
+				border-bottom-left-radius: 0;
+				border-bottom-right-radius: 0;
 			}
 			.product-name {
 				text-decoration: underline;
@@ -150,7 +145,7 @@ const price = product.price || "Цена по запросу";
 				width: 100%;
 				height: 100%;
 				object-fit: cover;
-				transition: transform 0.8s cubic-bezier(0.2, 1, 0.3, 1);
+				transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 			}
 		}
 
@@ -164,7 +159,7 @@ const price = product.price || "Цена по запросу";
 			font-size: 1rem;
 			margin: 0 5px 10px;
 			line-height: 1.4;
-			height: 2.8em; /* 1.4 (line-height) * 3 (строки) = фиксируем высоту */
+			height: 2.8em; /* 1.4 (line-height) * 2 (строки) */
 
 			.product-link {
 				color: #222;
@@ -188,7 +183,7 @@ const price = product.price || "Цена по запросу";
 
 		.product-price {
 			margin: auto 0 10px;
-			color: #e44d26; // e82e28
+			color: #e44d26;
 			font-weight: 700;
 			font-size: 1rem;
 		}
@@ -196,7 +191,7 @@ const price = product.price || "Цена по запросу";
 		/* --- Кнопка корзины (Выпадающая) --- */
 		.cart-action {
 			position: absolute;
-			top: calc(100% - 11px); // Сразу под границей карточки
+			top: 100%;
 			left: -1px;
 			right: -1px;
 			background: #fff;
@@ -206,10 +201,41 @@ const price = product.price || "Цена по запросу";
 			padding: 0 12px 12px;
 			opacity: 0;
 			visibility: hidden;
-			transform: translateY(-10px);
-			transition: all 0.3s ease;
-			box-shadow: 0 20px 30px rgba(0, 0, 0, 0.12);
+			transform: translateY(-4px);
+			transition: all 0.25s ease;
+			box-shadow: 0 16px 28px rgba(0, 0, 0, 0.1);
 			z-index: 11;
+		}
+
+		@media (max-width: 768px), (hover: none) {
+			&:hover .product-card__inner {
+				transform: none !important;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+				border-radius: 15px !important;
+			}
+
+			&:hover .image-wrapper img {
+				transform: none !important;
+			}
+
+			.wishlist-btn {
+				opacity: 1 !important;
+			}
+
+			.cart-action {
+				position: static !important;
+				opacity: 1 !important;
+				visibility: visible !important;
+				transform: none !important;
+				box-shadow: none !important;
+				border: none !important;
+				padding: 0 8px 8px !important;
+			}
+
+			.add-to-cart-btn {
+				width: 100% !important;
+				left: 0 !important;
+			}
 		}
 
 		.add-to-cart-btn {

@@ -203,7 +203,7 @@ export const cart = {
 				btn.classList.remove('is-in-cart');
 				const textEl = btn.querySelector('.btn-text');
 				if (textEl) {
-					textEl.textContent = 'В корзину';
+					textEl.textContent = 'В КОРЗИНУ';
 				} else {
 					btn.textContent = 'В КОРЗИНУ';
 				}

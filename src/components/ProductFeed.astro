@@ -8,7 +8,7 @@ interface Props {
 	products?: ProductBase[] | null;
 	id?: string;
 	class?: string;
-	variant?: 'v1' | 'v2';
+	variant?: 'v1' | 'v2' | 'v3';
 	skeletonCount?: number;
 	priorityCount?: number;
 	hasLoadMore?: boolean;
@@ -22,7 +22,7 @@ const {
 	products,
 	id = 'products-grid',
 	class: className = '',
-	variant = 'v1',
+	variant = 'v3',
 	skeletonCount = 4,
 	priorityCount = 0,
 	hasLoadMore = false,
