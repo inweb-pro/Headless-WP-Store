@@ -60,7 +60,10 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 		gridEl.style.display = 'grid';
 
 		gridEl.innerHTML = items.map((item: any) => {
-			const imageSrc = item.image || '/placeholder.jpg';
+			const rawImg = item.image || '/placeholder.svg';
+			const imageSrc = (rawImg.startsWith('http://') || rawImg.startsWith('https://'))
+				? `/_image?href=${encodeURIComponent(rawImg)}&w=320&h=220&f=webp&q=80`
+				: rawImg;
 			const uri = item.uri || '#';
 			const name = escapeHtml(item.name || 'Товар');
 			const price = item.price || '';
@@ -70,7 +73,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 					<div class="wishlist-card__inner">
 						<div class="image-wrapper">
 							<a href="${uri}" class="image-link">
-								<img src="${imageSrc}" alt="${name}" loading="lazy" />
+								<img src="${imageSrc}" alt="${name}" width="320" height="220" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/placeholder.svg';" />
 							</a>
 							<button
 								type="button"

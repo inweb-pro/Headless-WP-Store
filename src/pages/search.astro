@@ -87,7 +87,7 @@ const titleText = query
 				<>
 					<h1>Результаты: {titleText} <span class="results-count">({totalFound})</span></h1>
 					<div class="products-grid">
-						{results.map((p) => <ProductCard product={p} variant="v1" />)}
+						{results.map((p, i) => <ProductCard product={p} variant="v1" priority={i < 4} />)}
 					</div>
 				</>
 			)}

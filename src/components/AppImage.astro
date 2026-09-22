@@ -1,0 +1,174 @@
+---
+import { getImage } from 'astro:assets';
+
+interface Props {
+	src?: string | null;
+	alt?: string;
+	width?: number;
+	height?: number;
+	widths?: number[];
+	sizes?: string;
+	aspectRatio?: string; // e.g. "16/10", "1/1", "4/3"
+	priority?: boolean; // true = LCP image (loading="eager", fetchpriority="high")
+	format?: 'webp' | 'avif' | 'png' | 'jpeg';
+	quality?: number; // 1-100, default 80
+	fit?: 'cover' | 'contain' | 'fill' | 'none';
+	placeholder?: string;
+	class?: string; // Wrapper class
+	imgClass?: string; // Img tag class
+	id?: string;
+	style?: string;
+}
+
+const {
+	src,
+	alt = '',
+	width,
+	height,
+	widths,
+	sizes,
+	aspectRatio,
+	priority = false,
+	format = 'webp',
+	quality = 80,
+	fit = 'cover',
+	placeholder = '/placeholder.svg',
+	class: className = '',
+	imgClass = '',
+	id,
+	style = '',
+	...rest
+} = Astro.props;
+
+let optimizedSrc = placeholder;
+let optimizedSrcSet: string | undefined = undefined;
+
+const trimmedSrc = typeof src === 'string' ? src.trim() : '';
+
+if (trimmedSrc) {
+	if (trimmedSrc.startsWith('http://') || trimmedSrc.startsWith('https://')) {
+		try {
+			// Вычисляем целевые размеры для ресайза
+			const targetWidth = width || (height && aspectRatio ? Math.round(height * 1.5) : 600);
+			const targetHeight = height || (width && aspectRatio ? Math.round(width / 1.5) : undefined);
+
+			const imageResult = await getImage({
+				src: trimmedSrc,
+				width: targetWidth,
+				height: targetHeight,
+				format,
+				quality,
+				widths: widths && widths.length > 0 ? widths : undefined,
+			});
+
+			optimizedSrc = imageResult.src;
+			if (imageResult.srcSet && imageResult.srcSet.attribute) {
+				optimizedSrcSet = imageResult.srcSet.attribute;
+			}
+		} catch (err) {
+			console.warn(`[AppImage] Не удалось оптимизировать изображение ${trimmedSrc}:`, err);
+			optimizedSrc = trimmedSrc;
+		}
+	} else {
+		optimizedSrc = trimmedSrc;
+	}
+}
+
+// Вычисление aspect-ratio для обертки
+const computedAspectRatio = aspectRatio || (width && height ? `${width} / ${height}` : undefined);
+const wrapperStyle = [
+	computedAspectRatio ? `aspect-ratio: ${computedAspectRatio};` : '',
+	style
+].filter(Boolean).join(' ');
+---
+
+<div
+	class={`app-image-wrap ${priority ? 'is-priority is-loaded' : ''} ${className}`}
+	style={wrapperStyle}
+	id={id}
+>
+	<img
+		src={optimizedSrc}
+		srcset={optimizedSrcSet}
+		sizes={sizes}
+		alt={alt}
+		width={width}
+		height={height}
+		loading={priority ? 'eager' : 'lazy'}
+		decoding="async"
+		fetchpriority={priority ? 'high' : 'low'}
+		class={`app-image-img ${priority ? 'is-loaded' : ''} fit-${fit} ${imgClass}`}
+		onload="this.classList.add('is-loaded'); this.parentElement && this.parentElement.classList.add('is-loaded');"
+		onerror={`this.onerror=null; this.src='${placeholder}'; this.classList.add('is-loaded');`}
+		{...rest}
+	/>
+</div>
+
+<style>
+	.app-image-wrap {
+		position: relative;
+		display: block;
+		overflow: hidden;
+		width: 100%;
+		background-color: #f3f4f6;
+		background-image: linear-gradient(
+			90deg,
+			rgba(255, 255, 255, 0) 0%,
+			rgba(255, 255, 255, 0.5) 50%,
+			rgba(255, 255, 255, 0) 100%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite ease-in-out;
+		box-sizing: border-box;
+	}
+
+	@keyframes shimmer {
+		0% {
+			background-position: -200% 0;
+		}
+		100% {
+			background-position: 200% 0;
+		}
+	}
+
+	.app-image-wrap.is-loaded {
+		animation: none;
+		background-image: none;
+		background-color: transparent;
+	}
+
+	.app-image-img {
+		width: 100%;
+		height: 100%;
+		display: block;
+		opacity: 0;
+		transition: opacity 0.4s cubic-bezier(0.2, 0.8, 0.4, 1);
+		user-select: none;
+	}
+
+	.app-image-img.is-loaded {
+		opacity: 1;
+	}
+
+	.app-image-wrap.is-priority .app-image-img {
+		opacity: 1;
+		transition: none;
+	}
+
+	/* Режимы масштабирования объекта */
+	.fit-cover {
+		object-fit: cover;
+	}
+
+	.fit-contain {
+		object-fit: contain;
+	}
+
+	.fit-fill {
+		object-fit: fill;
+	}
+
+	.fit-none {
+		object-fit: none;
+	}
+</style>

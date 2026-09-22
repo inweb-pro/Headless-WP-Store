@@ -305,7 +305,10 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 
 		const rowsHtml = items.map((item: any) => {
 			const prod = item.product?.node;
-			const imageSrc = prod?.image?.sourceUrl || '/placeholder.png';
+			const rawImg = prod?.image?.sourceUrl || '/placeholder.svg';
+			const imageSrc = (rawImg.startsWith('http://') || rawImg.startsWith('https://'))
+				? `/_image?href=${encodeURIComponent(rawImg)}&w=120&h=120&f=webp&q=80`
+				: rawImg;
 			const unitPrice = cleanPrice(prod?.price || '');
 			const itemTotal = cleanPrice(item.total || '');
 
@@ -314,7 +317,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 					<td>
 						<div class="cart-product-cell">
 							<a href="${prod?.uri || '#'}" class="cart-prod-link">
-								<img src="${imageSrc}" alt="${prod?.name || ''}" class="cart-prod-img" />
+								<img src="${imageSrc}" alt="${prod?.name || ''}" width="80" height="80" loading="lazy" decoding="async" class="cart-prod-img" onerror="this.onerror=null;this.src='/placeholder.svg';" />
 							</a>
 							<a href="${prod?.uri || '#'}" class="cart-prod-name">${prod?.name || 'Товар'}</a>
 						</div>

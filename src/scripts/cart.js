@@ -241,13 +241,16 @@ export const cart = {
 
 		let itemsHtml = items.map((item) => {
 			const prod = item.product?.node;
-			const imageSrc = prod?.image?.sourceUrl || '/placeholder.png';
+			const rawImg = prod?.image?.sourceUrl || '/placeholder.svg';
+			const imageSrc = (rawImg.startsWith('http://') || rawImg.startsWith('https://'))
+				? `/_image?href=${encodeURIComponent(rawImg)}&w=120&h=120&f=webp&q=80`
+				: rawImg;
 			const price = cleanPrice(item.total || prod?.price || '');
 
 			return `
 				<div class="mini-cart-item" data-cart-key="${item.key}">
 					<a href="${prod?.uri || '#'}" class="mini-cart-item-img">
-						<img src="${imageSrc}" alt="${prod?.name || ''}" loading="lazy" />
+						<img src="${imageSrc}" alt="${prod?.name || ''}" width="60" height="60" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/placeholder.svg';" />
 					</a>
 					<div class="mini-cart-item-info">
 						<a href="${prod?.uri || '#'}" class="mini-cart-item-title">${prod?.name || 'Товар'}</a>

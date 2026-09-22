@@ -48,5 +48,10 @@ const { title, description, image, type, canonical, product, breadcrumbs } = Ast
     <Footer />
     <BackToTop />
 
+    <script>
+      import { initScrollReveal } from "../scripts/scroll-reveal.ts";
+      initScrollReveal();
+      document.addEventListener("astro:page-load", initScrollReveal);
+    </script>
   </body>
 </html>

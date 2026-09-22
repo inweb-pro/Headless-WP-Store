@@ -31,13 +31,13 @@ try {
 		<p>Запчасти для мотоциклов BMW и не только.</p>
 	</section>
 
-	<section class="featured">
+	<section class="featured reveal-on-scroll">
 		<h2>Новые поступления</h2>
 		{error ? (
 			<p class="error-message">Не удалось загрузить товары. Попробуйте позже.</p>
 		) : (
 			<div class="products-grid">
-				{latestProducts.map((p) => <ProductCard product={p} variant="v1" />)}
+				{latestProducts.map((p, i) => <ProductCard product={p} variant="v1" priority={i < 2} />)}
 			</div>
 		)}
 	</section>

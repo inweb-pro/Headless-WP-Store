@@ -5,10 +5,11 @@ import ProductCardV1 from "./product-cards/ProductCardV1.astro";
 interface Props {
   product: any;
   variant?: 'v1' | 'v2';
+  priority?: boolean;
 }
 
-const { product, variant = 'v1' } = Astro.props;
+const { product, variant = 'v1', priority = false } = Astro.props;
 ---
 
-{variant === 'v1' && <ProductCardV1 product={product} />}
+{variant === 'v1' && <ProductCardV1 product={product} priority={priority} />}
 <!-- {variant === 'v2' && <ProductCardV2 product={product} />} -->

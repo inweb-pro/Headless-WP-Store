@@ -33,8 +33,27 @@ export function initLoadMore() {
       const newCursor = meta?.getAttribute("data-cursor");
       if (meta) meta.remove();
 
+      // Добавляем плавную каскадную анимацию появления для каждой новой карточки
+      const newCards = temp.querySelectorAll(".product-card");
+      newCards.forEach((card, index) => {
+        card.classList.add("card-animate-in");
+        card.style.animationDelay = `${index * 0.05}s`;
+      });
+
       // Вставляем карточки в сетку 
       grid.insertAdjacentHTML('beforeend', temp.innerHTML);
+
+      // Обеспечиваем плавный показ для закэшированных картинок
+      const addedCards = grid.querySelectorAll(".card-animate-in");
+      addedCards.forEach((card) => {
+        const img = card.querySelector(".app-image-img");
+        if (img && img.complete) {
+          requestAnimationFrame(() => {
+            img.classList.add("is-loaded");
+            img.parentElement?.classList.add("is-loaded");
+          });
+        }
+      });
 
       // Обновляем состояния кнопок для новых карточек
       if (typeof window !== 'undefined' && window.MotoCart && typeof window.MotoCart.updateButtonStates === 'function') {

@@ -1,21 +1,31 @@
 ---
 // src/components/ProductCard.astro
+import AppImage from "../AppImage.astro";
+
 function cleanPrice(p: string | null | undefined): string {
 	if (!p) return '';
 	return p.replace(/&nbsp;/gi, ' ').replace(/\u00a0/g, ' ').replace(/&#8381;/gi, '₽').trim();
 }
 
-const { product } = Astro.props;
+const { product, priority = false } = Astro.props;
 const price = product.price || "Цена по запросу";
 ---
 
 <article class="product-card">
 	<div class="product-card__inner">
 		<div class="image-wrapper">
-			<img
-				src={product.image?.sourceUrl || "/placeholder.jpg"}
+			<AppImage
+				src={product.image?.sourceUrl}
 				alt={product.name}
-				loading="lazy"
+				width={320}
+				height={200}
+				aspectRatio="320/200"
+				widths={[320, 480, 640]}
+				sizes="(max-width: 480px) 100vw, (max-width: 768px) 50vw, (max-width: 1200px) 33vw, 300px"
+				priority={priority}
+				quality={82}
+				fit="cover"
+				class="card-image"
 			/>
 			<button
 				type="button"

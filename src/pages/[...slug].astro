@@ -12,6 +12,7 @@
  */
 import ShopLayout from "../layouts/ShopLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
+import AppImage from "../components/AppImage.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import LoadMore from "../components/LoadMore.astro";
 import { fetchGraphQL } from "../lib/graphql";
@@ -137,8 +138,8 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 					{node.name} ({((node as any).products?.nodes || []).length})
 				</h1>
 				<div id="products-grid" class="products-grid">
-					{(node as any).products?.nodes.map((p: any) => (
-						<ProductCard product={p} variant="v1" />
+					{(node as any).products?.nodes.map((p: any, i: number) => (
+						<ProductCard product={p} variant="v1" priority={i < 4} />
 					))}
 				</div>
 				{(node as any).products?.pageInfo.hasNextPage && (
@@ -155,29 +156,38 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 					<!-- Галерея изображений -->
 					<div class="product-gallery">
 						<div class="gallery-main">
-							<img
+							<AppImage
 								id="main-image"
-								src={allImages[0]?.sourceUrl || "/placeholder.jpg"}
+								src={allImages[0]?.sourceUrl}
 								alt={allImages[0]?.altText || product.name}
-								width={allImages[0]?.mediaDetails?.width || 600}
-								height={allImages[0]?.mediaDetails?.height || 600}
-								loading="eager"
+								width={600}
+								height={600}
+								aspectRatio="1/1"
+								widths={[400, 600, 800]}
+								sizes="(max-width: 768px) 100vw, 550px"
+								priority={true}
+								fit="contain"
+								quality={85}
 							/>
 						</div>
 						{allImages.length > 1 && (
 							<div class="gallery-thumbs">
 								{allImages.map((img, i) => (
 									<button
+										type="button"
 										class={`thumb ${i === 0 ? 'active' : ''}`}
 										data-src={img.sourceUrl}
 										data-alt={img.altText || product.name}
+										aria-label={`Фото ${i + 1}`}
 									>
-										<img
+										<AppImage
 											src={img.sourceUrl}
 											alt={img.altText || `${product.name} - фото ${i + 1}`}
 											width={80}
 											height={80}
-											loading="lazy"
+											aspectRatio="1/1"
+											fit="contain"
+											quality={75}
 										/>
 									</button>
 								))}
@@ -306,7 +316,7 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 
 				<!-- Похожие товары -->
 				{related.length > 0 && (
-					<section class="related-products">
+					<section class="related-products reveal-on-scroll">
 						<h3>Похожие товары</h3>
 						<div class="products-grid">
 							{related.map((p) => <ProductCard product={p} variant="v1" />)}
@@ -326,9 +336,10 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 
 	.product-main {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 		gap: 30px;
 		margin-bottom: 30px;
+		align-items: start;
 	}
 
 	/* Галерея */
@@ -336,36 +347,62 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 		position: sticky;
 		top: 80px;
 		align-self: start;
+		min-width: 0;
+		width: 100%;
+		max-width: 100%;
 	}
 
-	.gallery-main img {
+	.product-info {
+		min-width: 0;
 		width: 100%;
-		height: auto;
-		border-radius: 8px;
-		background: #f5f5f5;
-		object-fit: contain;
-		aspect-ratio: 1 / 1;
+		max-width: 100%;
+	}
+
+	.gallery-main {
+		border-radius: 12px;
+		overflow: hidden;
+		background: #fff;
+		border: 1px solid #eee;
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
 	}
 
 	.gallery-thumbs {
 		display: flex;
-		gap: 8px;
+		gap: 10px;
 		margin-top: 12px;
-		flex-wrap: wrap;
+		overflow-x: auto;
+		scrollbar-width: thin;
+		padding: 2px 2px 6px;
 	}
 
 	.thumb {
+		width: 74px;
+		height: 74px;
+		flex-shrink: 0;
 		border: 2px solid transparent;
-		border-radius: 6px;
-		padding: 2px;
+		border-radius: 8px;
+		padding: 3px;
 		cursor: pointer;
-		background: #fff;
-		transition: border-color 0.2s;
+		background: #fafafa;
+		transition: all 0.2s ease;
+		overflow: hidden;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0.65;
 	}
 
-	.thumb.active,
 	.thumb:hover {
+		opacity: 0.9;
+		border-color: #bbb;
+		transform: translateY(-2px);
+	}
+
+	.thumb.active {
+		opacity: 1;
 		border-color: var(--color-primary, #ffdd00);
+		box-shadow: 0 0 0 1px var(--color-primary, #ffdd00), 0 3px 8px rgba(0, 0, 0, 0.08);
+		transform: translateY(-2px);
 	}
 
 	.thumb img {
@@ -663,9 +700,9 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 	}
 
 	/* Адаптив */
-	@media (max-width: 768px) {
+	@media (max-width: 860px) {
 		.product-main {
-			grid-template-columns: 1fr;
+			grid-template-columns: minmax(0, 1fr);
 			gap: 20px;
 		}
 
@@ -678,16 +715,29 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 <script>
 	// Переключение изображений в галерее
 	const thumbs = document.querySelectorAll<HTMLButtonElement>('.thumb');
-	const mainImage = document.getElementById('main-image') as HTMLImageElement | null;
+	const mainImageContainer = document.querySelector('.gallery-main') as HTMLElement | null;
+	const mainImage = mainImageContainer ? (mainImageContainer.querySelector('img') as HTMLImageElement | null) : null;
 
 	if (mainImage && thumbs.length > 0) {
 		thumbs.forEach((thumb) => {
 			thumb.addEventListener('click', () => {
 				const src = thumb.dataset.src;
 				const alt = thumb.dataset.alt;
+				const thumbImg = thumb.querySelector('img') as HTMLImageElement | null;
 				if (src && mainImage) {
-					mainImage.src = src;
-					if (alt) mainImage.alt = alt;
+					mainImage.style.opacity = '0.35';
+					setTimeout(() => {
+						if (thumbImg && thumbImg.currentSrc && thumbImg.currentSrc.includes('_image')) {
+							// Используем WebP версию того же сервиса с размером 600px
+							mainImage.src = thumbImg.currentSrc.replace(/w=\d+/, 'w=600').replace(/h=\d+/, 'h=600');
+							mainImage.removeAttribute('srcset');
+						} else {
+							mainImage.src = src;
+						}
+						if (alt) mainImage.alt = alt;
+						mainImage.style.opacity = '1';
+					}, 120);
+
 					thumbs.forEach((t) => t.classList.remove('active'));
 					thumb.classList.add('active');
 				}

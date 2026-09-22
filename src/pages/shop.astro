@@ -76,7 +76,7 @@ const totalCount = products?.found || 0;
 			) : (
 				<>
 					<div id="products-grid" class="products-grid">
-						{products?.nodes.map((p) => <ProductCard product={p} variant="v1" />)}
+						{products?.nodes.map((p, i) => <ProductCard product={p} variant="v1" priority={i < 4} />)}
 					</div>
 					{products?.pageInfo.hasNextPage && (
 						<LoadMore cursor={products.pageInfo.endCursor} />
