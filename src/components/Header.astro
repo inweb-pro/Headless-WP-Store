@@ -357,11 +357,10 @@ try {
 						>
 					</button>
 					<ul class="mobile-submenu">
-						<li><a href="/orders"><span>Заказы</span></a></li>
+						<li><a href="/my-account?tab=orders"><span>Мои заказы</span></a></li>
 						<li><a href="/wishlist"><span>Избранное</span></a></li>
-						<li><a href="/edit-address"><span>Адрес доставки</span></a></li>
-						<li><a href="/edit-account"><span>Настройки</span></a></li>
-						<li><a href="/customer-logout"><span>Выйти</span></a></li>
+						<li><a href="/my-account?tab=profile"><span>Мои данные и адрес</span></a></li>
+						<li><a href="/my-account"><span>Личный кабинет</span></a></li>
 					</ul>
 				</div>
 			</nav>
@@ -481,11 +480,11 @@ try {
 					</svg>
 				</div>
 
-				<div class="action-item user-acc">
+				<a href="/my-account" class="action-item user-acc" aria-label="Личный кабинет">
 					<svg class="icon" width="26" height="26"
 						><use href="/ui-icons.svg#user"></use></svg
 					>
-				</div>
+				</a>
 
 				<!-- <div class="action-item">
 					<div class="icon-badge">

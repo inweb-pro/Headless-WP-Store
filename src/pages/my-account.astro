@@ -1,14 +1,45 @@
 ---
 import Layout from '../components/Layout.astro';
-import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { fetchGraphQL } from '../lib/graphql';
 
+function cleanPrice(price: string | null | undefined): string {
+	if (!price) return '';
+	return decodeURIComponent(price)
+		.replace(/&nbsp;/gi, ' ')
+		.replace(/\u00a0/g, ' ')
+		.replace(/&#8381;/gi, '₽')
+		.replace(/&times;/gi, '×')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
 const authToken = Astro.cookies.get('auth_token')?.value;
+const initialTab = Astro.url.searchParams.get('tab') || 'orders';
 
 let customer: any = null;
+let profileUser: any = null;
+let orders: any[] = [];
 let fetchError = false;
 
 if (authToken) {
+	// 1. Загружаем полный профиль покупателя через REST API
+	try {
+		const meRes = await fetch('http://api-motopuzzle.local/wp-json/motopuzzle/v1/me', {
+			headers: {
+				Authorization: `Bearer ${authToken}`,
+			},
+		});
+		if (meRes.ok) {
+			const meData = await meRes.json();
+			if (meData.authenticated && meData.user) {
+				profileUser = meData.user;
+			}
+		}
+	} catch (e) {
+		console.error('[My Account] Ошибка загрузки профиля через REST:', e);
+	}
+
+	// 2. Загружаем историю заказов через GraphQL
 	try {
 		const data = await fetchGraphQL<{ customer: any }>(
 			`query GetCustomerData {
@@ -16,23 +47,40 @@ if (authToken) {
 					databaseId
 					displayName
 					email
-					orders(first: 20) {
+					orders(first: 50) {
 						nodes {
 							databaseId
 							orderNumber
 							date
 							status
 							total
+							paymentMethodTitle
+							billing {
+								address1
+								city
+							}
+							metaData {
+								key
+								value
+							}
 							lineItems {
 								nodes {
+									name
+									image
+									slug
+									quantity
+									total
 									product {
 										node {
 											name
 											uri
+											slug
+											image {
+												sourceUrl
+												altText
+											}
 										}
 									}
-									quantity
-									total
 								}
 							}
 						}
@@ -42,67 +90,134 @@ if (authToken) {
 			{},
 			{ authToken },
 		);
-		customer = data.customer;
+		if (data?.customer) {
+			customer = data.customer;
+			orders = data.customer.orders?.nodes || [];
+		}
 	} catch (e) {
-		console.warn('[My Account] Токен недействителен или сессия истекла:', (e as Error).message);
+		console.warn('[My Account] Токен или сессия заказов:', (e as Error).message);
 		fetchError = true;
 	}
 }
 
-// Статусы заказа на русском
+// Статусы заказа на русском («На удержании» заменено на «Требует подтверждения»)
 const statusLabels: Record<string, { label: string; color: string }> = {
 	PENDING: { label: 'Ожидает оплаты', color: '#f57c00' },
 	PROCESSING: { label: 'В обработке', color: '#1976d2' },
-	ON_HOLD: { label: 'На удержании', color: '#7b1fa2' },
+	ON_HOLD: { label: 'Требует подтверждения', color: '#7b1fa2' },
 	COMPLETED: { label: 'Выполнен', color: '#388e3c' },
 	CANCELLED: { label: 'Отменен', color: '#d32f2f' },
 	REFUNDED: { label: 'Возврат', color: '#555' },
 	FAILED: { label: 'Не удался', color: '#d32f2f' },
 };
+
+// Проверяем авторизацию
+const isAuthenticated = !!(profileUser || customer);
+const currentUser = profileUser || {
+	email: customer?.email || '',
+	name: customer?.displayName || '',
+	phone: '',
+	passport: '',
+	city: '',
+	address: '',
+};
 ---
 
 <Layout title="Личный кабинет">
 	<div class="container account-container">
-		<Breadcrumbs items={[{ name: "Личный кабинет", uri: "/my-account" }]} />
-
 		<h1 class="page-title">Личный кабинет</h1>
 
-		{customer ? (
+		{isAuthenticated ? (
 			/* АВТОРИЗОВАННЫЙ ПОЛЬЗОВАТЕЛЬ */
 			<div class="account-dashboard">
+				<!-- Карточка пользователя с кнопками -->
 				<div class="account-user-card">
 					<div class="user-avatar">
-						<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 							<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
 							<circle cx="12" cy="7" r="4"></circle>
 						</svg>
 					</div>
 					<div class="user-details">
-						<h2 class="user-name">{customer.displayName || customer.email}</h2>
-						<p class="user-email">{customer.email}</p>
+						<h2 class="user-name" id="display-user-name">{currentUser.name || currentUser.email}</h2>
+						<p class="user-email">{currentUser.email}</p>
 					</div>
-					<button type="button" id="btn-logout" class="btn-logout">
-						Выйти
+					<div class="user-actions">
+						<button type="button" id="btn-edit-profile-trigger" class="btn-edit-profile">
+							<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+								<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+							</svg>
+							<span>Редактировать данные</span>
+						</button>
+						<button type="button" id="btn-logout" class="btn-logout">
+							Выйти
+						</button>
+					</div>
+				</div>
+
+				<!-- Переключатель вкладок: Заказы / Мои данные -->
+				<div class="account-nav-tabs">
+					<button
+						type="button"
+						class={`account-nav-tab ${initialTab !== 'profile' ? 'is-active' : ''}`}
+						data-account-tab="orders"
+					>
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+							<line x1="3" y1="6" x2="21" y2="6"></line>
+							<path d="M16 10a4 4 0 0 1-8 0"></path>
+						</svg>
+						<span>История заказов</span>
+						{orders.length > 0 && <span class="tab-badge">{orders.length}</span>}
+					</button>
+
+					<button
+						type="button"
+						class={`account-nav-tab ${initialTab === 'profile' ? 'is-active' : ''}`}
+						data-account-tab="profile"
+					>
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+							<circle cx="12" cy="7" r="4"></circle>
+						</svg>
+						<span>Мои данные и адрес</span>
 					</button>
 				</div>
 
-				<section class="account-orders-section">
-					<h2 class="section-title">История заказов</h2>
-
-					{(!customer.orders?.nodes || customer.orders.nodes.length === 0) ? (
+				<!-- Вкладка 1: История заказов -->
+				<div id="tab-orders-content" class="account-tab-pane" style={initialTab === 'profile' ? 'display: none;' : 'display: block;'}>
+					{orders.length === 0 ? (
 						<div class="no-orders-box">
 							<p>У вас пока нет оформленных заказов.</p>
 							<a href="/shop" class="btn-shop">Перейти в каталог</a>
 						</div>
 					) : (
 						<div class="orders-list">
-							{customer.orders.nodes.map((order: any) => {
+							{orders.map((order: any) => {
 								const st = statusLabels[order.status] || { label: order.status, color: '#666' };
 								const formattedDate = order.date ? new Date(order.date).toLocaleDateString('ru-RU', {
 									day: 'numeric',
 									month: 'long',
 									year: 'numeric'
 								}) : '';
+
+								// Адрес доставки
+								const city = order.billing?.city?.trim() || '';
+								const addr = order.billing?.address1?.trim() || '';
+								const addressParts = [city, addr].filter(Boolean);
+								const deliveryAddress = addressParts.length > 0 ? addressParts.join(', ') : '';
+
+								// Способ получения из метаданных заказа
+								const deliveryMeta = order.metaData?.find((m: any) => m.key === 'shipping_method_title' || m.key === 'delivery_type')?.value;
+								let deliveryMethodTitle = '';
+								if (deliveryMeta === 'pickup') {
+									deliveryMethodTitle = 'Самовывоз (г. Санкт-Петербург)';
+								} else if (deliveryMeta === 'delivery') {
+									deliveryMethodTitle = 'Транспортная компания / Доставка';
+								} else if (deliveryMeta) {
+									deliveryMethodTitle = deliveryMeta;
+								}
 
 								return (
 									<div class="order-card">
@@ -117,27 +232,178 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 										</div>
 
 										<div class="order-card-items">
-											{order.lineItems?.nodes?.map((li: any) => (
-												<div class="order-item-row">
-													<a href={li.product?.node?.uri || '#'} class="order-item-name">
-														{li.product?.node?.name || 'Товар'}
-													</a>
-													<span class="order-item-qty">{li.quantity} шт.</span>
-													<span class="order-item-total">{li.total}</span>
-												</div>
-											))}
+											{order.lineItems?.nodes?.map((li: any) => {
+												const productName = li.name || li.product?.node?.name || 'Товар';
+												const productSlug = li.slug || li.product?.node?.slug || '';
+												const productImg = li.image || li.product?.node?.image?.sourceUrl || '';
+												const productUri = productSlug ? `/product/${productSlug}` : (li.product?.node?.uri || '');
+
+												return (
+													<div class="order-item-row">
+														<div class="order-item-main">
+															{productImg ? (
+																<img src={productImg} alt={productName} class="order-item-thumb" loading="lazy" />
+															) : (
+																<div class="order-item-thumb-placeholder">
+																	<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+																		<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+																		<circle cx="8.5" cy="8.5" r="1.5"></circle>
+																		<polyline points="21 15 16 10 5 21"></polyline>
+																	</svg>
+																</div>
+															)}
+															<div class="order-item-info">
+																<span class="order-item-title">{productName}</span>
+															</div>
+														</div>
+														<div class="order-item-pricing">
+															<span class="order-item-qty">{li.quantity} шт.</span>
+															<span class="order-item-total">{cleanPrice(li.total)}</span>
+														</div>
+													</div>
+												);
+											})}
 										</div>
+
+										{(order.paymentMethodTitle || deliveryAddress || deliveryMethodTitle) && (
+											<div class="order-card-meta-details">
+												{order.paymentMethodTitle && (
+													<div class="order-meta-row">
+														<span class="meta-label">Способ оплаты:</span>
+														<span class="meta-val">{order.paymentMethodTitle}</span>
+													</div>
+												)}
+												{deliveryMethodTitle && (
+													<div class="order-meta-row">
+														<span class="meta-label">Способ получения:</span>
+														<span class="meta-val">{deliveryMethodTitle}</span>
+													</div>
+												)}
+												{deliveryAddress && (
+													<div class="order-meta-row">
+														<span class="meta-label">Адрес доставки:</span>
+														<span class="meta-val">{deliveryAddress}</span>
+													</div>
+												)}
+											</div>
+										)}
 
 										<div class="order-card-footer">
 											<span>Итого:</span>
-											<strong class="order-final-sum">{order.total}</strong>
+											<strong class="order-final-sum">{cleanPrice(order.total)}</strong>
 										</div>
 									</div>
 								);
 							})}
 						</div>
 					)}
-				</section>
+				</div>
+
+				<!-- Вкладка 2: Редактирование личных данных и адреса -->
+				<div id="tab-profile-content" class="account-tab-pane" style={initialTab === 'profile' ? 'display: block;' : 'display: none;'}>
+					<div class="profile-card">
+						<div class="profile-card-header">
+							<h2 class="profile-card-title">Личные данные и адрес доставки</h2>
+							<p class="profile-card-desc">Эти данные будут автоматически подставляться при оформлении новых заказов.</p>
+						</div>
+
+						<form id="profile-edit-form" class="profile-form">
+							<div id="profile-success-msg" class="profile-alert success" style="display: none;">
+								Данные успешно сохранены!
+							</div>
+							<div id="profile-error-msg" class="profile-alert error" style="display: none;"></div>
+
+							<div class="profile-fields-grid">
+								<!-- Email (Логин) - НЕЛЬЗЯ ИЗМЕНЯТЬ -->
+								<div class="field-group full-width">
+									<label for="profile-email">Email (логин)</label>
+									<input
+										type="email"
+										id="profile-email"
+										name="email"
+										value={currentUser.email}
+										disabled
+										readonly
+										class="input-disabled"
+									/>
+									<small class="field-hint">Email используется как логин для входа и не может быть изменен</small>
+								</div>
+
+								<!-- Ф.И.О. -->
+								<div class="field-group full-width">
+									<label for="profile-name">Ф.И.О. получателя <span class="req">*</span></label>
+									<input
+										type="text"
+										id="profile-name"
+										name="name"
+										value={currentUser.name}
+										placeholder="Иванов Иван Иванович"
+										required
+									/>
+								</div>
+
+								<!-- Номер телефона с маской -->
+								<div class="field-group">
+									<label for="profile-phone">Номер телефона <span class="req">*</span></label>
+									<input
+										type="tel"
+										id="profile-phone"
+										name="phone"
+										value={currentUser.phone}
+										placeholder="+7 (999) 000-00-00"
+										maxlength="18"
+										required
+									/>
+								</div>
+
+								<!-- Серия и номер паспорта с маской -->
+								<div class="field-group">
+									<label for="profile-passport">Серия и номер паспорта</label>
+									<input
+										type="text"
+										id="profile-passport"
+										name="passport"
+										value={currentUser.passport}
+										placeholder="0000-000000"
+										maxlength="11"
+										inputmode="numeric"
+									/>
+									<small class="field-hint">Требуется транспортными компаниями (СДЭК, ПЭК, Деловые Линии)</small>
+								</div>
+
+								<!-- Город -->
+								<div class="field-group">
+									<label for="profile-city">Город назначения</label>
+									<input
+										type="text"
+										id="profile-city"
+										name="city"
+										value={currentUser.city}
+										placeholder="Например: Москва, Санкт-Петербург"
+									/>
+								</div>
+
+								<!-- Единый адрес доставки -->
+								<div class="field-group full-width">
+									<label for="profile-address">Адрес доставки (улица, дом, кв.) или адрес ПВЗ</label>
+									<input
+										type="text"
+										id="profile-address"
+										name="address"
+										value={currentUser.address}
+										placeholder="ул. Ленина, д. 10, кв. 5 или адрес пункта выдачи СДЭК"
+									/>
+								</div>
+							</div>
+
+							<div class="profile-form-footer">
+								<button type="submit" id="btn-save-profile" class="btn-save-profile">
+									Сохранить изменения
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
 			</div>
 		) : (
 			/* НЕАВТОРИЗОВАННЫЙ ПОЛЬЗОВАТЕЛЬ */
@@ -194,7 +460,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 
 <style>
 	.account-container {
-		max-width: 900px;
+		max-width: 960px;
 		margin: 20px auto 70px;
 		padding: 0 15px;
 	}
@@ -204,27 +470,30 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 		font-size: 1.8rem;
 		margin: 15px 0 25px;
 		color: #222;
+		text-align: center;
 	}
 
-	/* Карточка профиля */
+	/* Карточка профиля вверху */
 	.account-user-card {
 		background: #fff;
 		border: 1px solid #eee;
 		border-radius: 10px;
-		padding: 20px 24px;
+		padding: 22px 26px;
 		display: flex;
 		align-items: center;
-		gap: 16px;
-		margin-bottom: 30px;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+		gap: 18px;
+		margin-bottom: 24px;
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+		flex-wrap: wrap;
 	}
 
 	.user-avatar {
-		width: 54px;
-		height: 54px;
+		width: 56px;
+		height: 56px;
 		border-radius: 50%;
-		background: #fdfae6;
-		color: #b89a00;
+		background: #fffdf0;
+		border: 1.5px solid #ffe97d;
+		color: #9e7f00;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -233,11 +502,13 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 
 	.user-details {
 		flex: 1;
+		min-width: 200px;
 	}
 
 	.user-name {
-		font-size: 1.15rem;
-		margin: 0 0 3px;
+		font-size: 1.25rem;
+		font-family: "Play", sans-serif;
+		margin: 0 0 4px;
 		color: #222;
 	}
 
@@ -247,11 +518,38 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 		margin: 0;
 	}
 
+	.user-actions {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.btn-edit-profile {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		background: #f5f5f5;
+		color: #333;
+		border: 1px solid #ddd;
+		padding: 9px 16px;
+		border-radius: 6px;
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.btn-edit-profile:hover {
+		background: #fffdf0;
+		border-color: var(--color-primary, #ffdd00);
+		color: #111;
+	}
+
 	.btn-logout {
 		background: #fff;
 		color: #777;
 		border: 1px solid #ddd;
-		padding: 8px 16px;
+		padding: 9px 16px;
 		border-radius: 6px;
 		font-size: 13px;
 		font-weight: 600;
@@ -265,14 +563,57 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 		background: #fff8f8;
 	}
 
-	/* Список заказов */
-	.section-title {
+	/* Вкладки личного кабинета */
+	.account-nav-tabs {
+		display: flex;
+		gap: 12px;
+		margin-bottom: 22px;
+		border-bottom: 2px solid #eee;
+		padding-bottom: 0;
+	}
+
+	.account-nav-tab {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 12px 20px;
+		background: none;
+		border: none;
+		font-size: 15px;
+		font-weight: 700;
 		font-family: "Play", sans-serif;
-		font-size: 1.3rem;
-		margin: 0 0 18px;
+		color: #777;
+		cursor: pointer;
+		position: relative;
+		transition: color 0.2s;
+		border-bottom: 3px solid transparent;
+		margin-bottom: -2px;
+	}
+
+	.account-nav-tab:hover {
 		color: #222;
 	}
 
+	.account-nav-tab.is-active {
+		color: #111;
+		border-bottom-color: var(--color-primary, #ffdd00);
+	}
+
+	.tab-badge {
+		background: #eee;
+		color: #333;
+		font-size: 11px;
+		padding: 2px 7px;
+		border-radius: 12px;
+		font-weight: 700;
+	}
+
+	.account-nav-tab.is-active .tab-badge {
+		background: var(--color-primary, #ffdd00);
+		color: #111;
+	}
+
+	/* Список заказов */
 	.no-orders-box {
 		background: #fff;
 		border: 1px solid #eee;
@@ -287,11 +628,16 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 		margin-top: 15px;
 		background: var(--color-primary, #ffdd00);
 		color: #1a1a1a;
-		padding: 10px 22px;
+		padding: 11px 24px;
 		border-radius: 6px;
 		font-weight: 700;
 		font-size: 13px;
 		text-decoration: none;
+		transition: background 0.2s;
+	}
+
+	.btn-shop:hover {
+		background: #e6c700;
 	}
 
 	.orders-list {
@@ -305,7 +651,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 		border: 1px solid #eee;
 		border-radius: 8px;
 		overflow: hidden;
-		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 	}
 
 	.order-card-header {
@@ -322,17 +668,17 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 	.order-number {
 		font-weight: 700;
 		color: #222;
-		font-size: 14px;
+		font-size: 15px;
 		margin-right: 8px;
 	}
 
 	.order-date {
-		font-size: 12px;
+		font-size: 13px;
 		color: #888;
 	}
 
 	.order-status-badge {
-		padding: 4px 10px;
+		padding: 4px 12px;
 		border-radius: 20px;
 		font-size: 12px;
 		font-weight: 600;
@@ -350,48 +696,270 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 		justify-content: space-between;
 		align-items: center;
 		font-size: 13px;
-		gap: 10px;
+		gap: 15px;
+		padding-bottom: 12px;
+		border-bottom: 1px dashed #f0f0f0;
 	}
 
-	.order-item-name {
+	.order-item-row:last-child {
+		border-bottom: none;
+		padding-bottom: 0;
+	}
+
+	.order-item-main {
+		display: flex;
+		align-items: center;
+		gap: 12px;
 		flex: 1;
-		color: #333;
-		text-decoration: none;
+		min-width: 0;
 	}
 
-	.order-item-name:hover {
-		text-decoration: underline;
+	.order-item-thumb {
+		width: 48px;
+		height: 48px;
+		object-fit: cover;
+		border-radius: 6px;
+		border: 1px solid #eee;
+		flex-shrink: 0;
+		background: #fdfdfd;
+	}
+
+	.order-item-thumb-placeholder {
+		width: 48px;
+		height: 48px;
+		border-radius: 6px;
+		border: 1px solid #eee;
+		background: #f5f5f5;
+		color: #aaa;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.order-item-info {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+	}
+
+	.order-item-title {
+		color: #222;
+		font-weight: 600;
+		font-size: 13px;
+		line-height: 1.35;
+		word-break: break-word;
+	}
+
+	.order-item-pricing {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		flex-shrink: 0;
 	}
 
 	.order-item-qty {
-		color: #888;
+		color: #777;
+		font-size: 12px;
+		white-space: nowrap;
 	}
 
 	.order-item-total {
-		font-weight: 700;
+		font-weight: 600;
+		color: #222;
+		white-space: nowrap;
+	}
+
+	.order-card-meta-details {
+		padding: 10px 18px;
+		background: #fafafa;
+		border-top: 1px solid #f0f0f0;
+		font-size: 12px;
+		color: #666;
+		display: flex;
+		flex-direction: column;
+		gap: 5px;
+	}
+
+	.order-meta-row {
+		display: flex;
+		gap: 6px;
+		align-items: baseline;
+		line-height: 1.4;
+	}
+
+	.meta-label {
+		color: #888;
+		font-weight: 500;
+	}
+
+	.meta-val {
 		color: #333;
+		font-weight: 500;
 	}
 
 	.order-card-footer {
-		padding: 12px 18px;
-		background: #fdfdfd;
-		border-top: 1px solid #eee;
 		display: flex;
 		justify-content: flex-end;
 		align-items: center;
 		gap: 10px;
+		padding: 12px 18px;
+		background: #fafafa;
+		border-top: 1px solid #eee;
 		font-size: 14px;
 	}
 
 	.order-final-sum {
-		font-size: 16px;
+		font-size: 1.1rem;
+		color: #e53935;
+		font-weight: 700;
+	}
+
+	/* Карточка редактирования профиля */
+	.profile-card {
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 8px;
+		padding: 26px;
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+	}
+
+	.profile-card-header {
+		margin-bottom: 22px;
+		padding-bottom: 14px;
+		border-bottom: 1px solid #eee;
+	}
+
+	.profile-card-title {
+		font-family: "Play", sans-serif;
+		font-size: 1.35rem;
+		margin: 0 0 6px;
+		color: #222;
+	}
+
+	.profile-card-desc {
+		font-size: 13px;
+		color: #777;
+		margin: 0;
+	}
+
+	.profile-fields-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 18px;
+		margin-bottom: 24px;
+	}
+
+	@media (max-width: 650px) {
+		.profile-fields-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.full-width {
+		grid-column: 1 / -1;
+	}
+
+	.field-group {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.field-group label {
+		font-size: 13px;
+		font-weight: 600;
+		color: #444;
+	}
+
+	.field-group .req {
 		color: #e53935;
 	}
 
-	/* Табы авторизации */
+	.field-group input {
+		padding: 11px 14px;
+		border: 1px solid #ddd;
+		border-radius: 6px;
+		font-size: 14px;
+		outline: none;
+		transition: border-color 0.2s;
+		background: #fff;
+		color: #333;
+	}
+
+	.field-group input:focus {
+		border-color: var(--color-primary, #ffdd00);
+	}
+
+	.field-group .input-disabled {
+		background: #f7f7f7;
+		color: #888;
+		cursor: not-allowed;
+		border-color: #e5e5e5;
+	}
+
+	.field-hint {
+		font-size: 11px;
+		color: #888;
+		line-height: 1.3;
+	}
+
+	.profile-alert {
+		padding: 12px 16px;
+		border-radius: 6px;
+		font-size: 13px;
+		margin-bottom: 18px;
+		line-height: 1.4;
+	}
+
+	.profile-alert.success {
+		background: #e8f5e9;
+		color: #2e7d32;
+		border: 1px solid #c8e6c9;
+	}
+
+	.profile-alert.error {
+		background: #ffebee;
+		color: #c62828;
+		border: 1px solid #ffcdd2;
+	}
+
+	.profile-form-footer {
+		display: flex;
+		justify-content: flex-start;
+		padding-top: 10px;
+	}
+
+	.btn-save-profile {
+		background: var(--color-primary, #ffdd00);
+		color: #1a1a1a;
+		border: none;
+		border-radius: 6px;
+		padding: 13px 28px;
+		font-size: 14px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.3px;
+		cursor: pointer;
+		transition: all 0.2s;
+		box-shadow: 0 4px 12px rgba(255, 221, 0, 0.35);
+	}
+
+	.btn-save-profile:hover:not(:disabled) {
+		background: #e6c700;
+		transform: translateY(-1px);
+	}
+
+	.btn-save-profile:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	/* Формы входа и регистрации */
 	.auth-wrapper {
-		max-width: 440px;
-		margin: 20px auto;
+		max-width: 480px;
+		margin: 30px auto;
 	}
 
 	.auth-tabs {
@@ -445,31 +1013,6 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 		display: flex;
 	}
 
-	.field-group {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-
-	.field-group label {
-		font-size: 13px;
-		font-weight: 600;
-		color: #444;
-	}
-
-	.field-group input {
-		padding: 11px 14px;
-		border: 1px solid #ddd;
-		border-radius: 6px;
-		font-size: 14px;
-		outline: none;
-		transition: border-color 0.2s;
-	}
-
-	.field-group input:focus {
-		border-color: var(--color-primary, #ffdd00);
-	}
-
 	.btn-auth-submit {
 		background: var(--color-primary, #ffdd00);
 		color: #1a1a1a;
@@ -499,15 +1042,154 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 </style>
 
 <script>
-	// Переключение табов Вход / Регистрация
-	const tabs = document.querySelectorAll('.auth-tab');
+	import { initPhoneMask } from '../scripts/phone-mask.js';
+	import { initPassportMask } from '../scripts/passport-mask.js';
+
+	// 1. Инициализация масок для полей профиля
+	const phoneInput = document.getElementById('profile-phone');
+	if (phoneInput) {
+		initPhoneMask(phoneInput);
+	}
+
+	const passportInput = document.getElementById('profile-passport');
+	if (passportInput) {
+		initPassportMask(passportInput);
+	}
+
+	// 2. Переключение табов Личного кабинета (Заказы / Мои данные)
+	const accountTabs = document.querySelectorAll('.account-nav-tab');
+	const ordersPane = document.getElementById('tab-orders-content');
+	const profilePane = document.getElementById('tab-profile-content');
+	const editTriggerBtn = document.getElementById('btn-edit-profile-trigger');
+
+	function switchAccountTab(tabName: string) {
+		accountTabs.forEach((tab) => {
+			const active = tab.getAttribute('data-account-tab') === tabName;
+			tab.classList.toggle('is-active', active);
+		});
+
+		if (tabName === 'profile') {
+			if (profilePane) profilePane.style.display = 'block';
+			if (ordersPane) ordersPane.style.display = 'none';
+		} else {
+			if (ordersPane) ordersPane.style.display = 'block';
+			if (profilePane) profilePane.style.display = 'none';
+		}
+
+		// Обновляем URL без перезагрузки страницы
+		const url = new URL(window.location.href);
+		if (tabName === 'profile') {
+			url.searchParams.set('tab', 'profile');
+		} else {
+			url.searchParams.delete('tab');
+		}
+		history.replaceState(null, '', url.toString());
+	}
+
+	accountTabs.forEach((tab) => {
+		tab.addEventListener('click', () => {
+			const target = tab.getAttribute('data-account-tab') || 'orders';
+			switchAccountTab(target);
+		});
+	});
+
+	editTriggerBtn?.addEventListener('click', () => {
+		switchAccountTab('profile');
+	});
+
+	// 3. Сохранение изменений в профиле
+	const profileForm = document.getElementById('profile-edit-form') as HTMLFormElement;
+	const saveBtn = document.getElementById('btn-save-profile') as HTMLButtonElement;
+	const successMsg = document.getElementById('profile-success-msg');
+	const errorMsg = document.getElementById('profile-error-msg');
+	const displayUserName = document.getElementById('display-user-name');
+
+	profileForm?.addEventListener('submit', async (e) => {
+		e.preventDefault();
+		if (!saveBtn) return;
+
+		if (successMsg) successMsg.style.display = 'none';
+		if (errorMsg) {
+			errorMsg.style.display = 'none';
+			errorMsg.textContent = '';
+		}
+
+		const formData = new FormData(profileForm);
+		const payload = {
+			name: String(formData.get('name') || '').trim(),
+			phone: String(formData.get('phone') || '').trim(),
+			passport: String(formData.get('passport') || '').trim(),
+			city: String(formData.get('city') || '').trim(),
+			address: String(formData.get('address') || '').trim(),
+		};
+
+		// Валидация телефона (11 цифр)
+		const phoneDigits = payload.phone.replace(/\D/g, '');
+		if (phoneDigits.length < 11) {
+			if (errorMsg) {
+				errorMsg.textContent = 'Пожалуйста, укажите полный номер телефона: +7 (000) 000-00-00';
+				errorMsg.style.display = 'block';
+			}
+			phoneInput?.focus();
+			return;
+		}
+
+		// Валидация паспорта (если заполнен, должно быть 10 цифр)
+		if (payload.passport) {
+			const passportDigits = payload.passport.replace(/\D/g, '');
+			if (passportDigits.length < 10) {
+				if (errorMsg) {
+					errorMsg.textContent = 'Пожалуйста, укажите полные серию и номер паспорта: 10 цифр (0000-000000)';
+					errorMsg.style.display = 'block';
+				}
+				passportInput?.focus();
+				return;
+			}
+		}
+
+		saveBtn.disabled = true;
+		saveBtn.textContent = 'Сохраняем...';
+
+		try {
+			const res = await fetch('/api/auth/profile', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+			const data = await res.json();
+
+			if (data.success) {
+				if (successMsg) successMsg.style.display = 'block';
+				if (displayUserName && data.user?.name) {
+					displayUserName.textContent = data.user.name;
+				}
+			} else {
+				if (errorMsg) {
+					errorMsg.textContent = data.error || 'Ошибка при сохранении данных';
+					errorMsg.style.display = 'block';
+				}
+			}
+		} catch (err) {
+			console.error('Save profile error:', err);
+			if (errorMsg) {
+				errorMsg.textContent = 'Ошибка сети. Попробуйте еще раз.';
+				errorMsg.style.display = 'block';
+			}
+		} finally {
+			saveBtn.disabled = false;
+			saveBtn.textContent = 'Сохранить изменения';
+		}
+	});
+
+	// 4. Переключение табов Вход / Регистрация для гостей
+	const authTabs = document.querySelectorAll('.auth-tab');
 	const loginForm = document.getElementById('login-form') as HTMLFormElement;
 	const registerForm = document.getElementById('register-form') as HTMLFormElement;
 
-	tabs.forEach((tab) => {
+	authTabs.forEach((tab) => {
 		tab.addEventListener('click', () => {
 			const target = tab.getAttribute('data-tab');
-			tabs.forEach((t) => t.classList.remove('is-active'));
+			authTabs.forEach((t) => t.classList.remove('is-active'));
 			tab.classList.add('is-active');
 
 			if (target === 'login') {
@@ -587,7 +1269,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 		}
 	});
 
-	// Выход
+	// 5. Выход
 	const logoutBtn = document.getElementById('btn-logout');
 	logoutBtn?.addEventListener('click', async () => {
 		try {
