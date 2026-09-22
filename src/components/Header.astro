@@ -2,6 +2,17 @@
 import HeaderSearch from "./HeaderSearch.astro";
 import Offcanvas from "./Offcanvas.astro";
 import "../styles/header.css"; // Подключаем общие стили
+import { fetchGraphQL } from "../lib/graphql";
+import { GET_SIDEBAR_CATEGORIES } from "../lib/queries/categories";
+import type { SidebarCategoriesResult, CategoryNode } from "../lib/types";
+
+let categories: CategoryNode[] = [];
+try {
+	const data = await fetchGraphQL<SidebarCategoriesResult>(GET_SIDEBAR_CATEGORIES);
+	categories = data.productCategories?.nodes || [];
+} catch (e) {
+	console.error('[Header] Ошибка загрузки категорий для мобильного поиска:', (e as Error).message);
+}
 ---
 
 <header class="main-header">
@@ -118,9 +129,9 @@ import "../styles/header.css"; // Подключаем общие стили
 						<svg class="icon" width="28" height="28">
 							<use href="/ui-icons.svg#shopping-cart"></use>
 						</svg>
-						<span class="badge yellow">2</span>
+						<span class="badge yellow" style="display: none;">0</span>
 					</div>
-					<span class="price">8 000 ₽</span>
+					<span class="price">0 ₽</span>
 				</div>
 
 				<div class="mobile-actions">
@@ -137,7 +148,7 @@ import "../styles/header.css"; // Подключаем общие стили
 							<svg class="icon" width="26" height="26">
 								<use href="/ui-icons.svg#shopping-cart"></use>
 							</svg>
-							<span class="badge yellow">2</span>
+							<span class="badge yellow" style="display: none;">0</span>
 						</div>
 					</div>
 				</div>
@@ -203,26 +214,34 @@ import "../styles/header.css"; // Подключаем общие стили
 	<Offcanvas id="mobile-menu" side="left">
 		<div class="mobile-menu-container">
 			<div class="mobile-search-area">
-				<div class="search-field">
-					<input
-						type="text"
-						id="mobile-search-input"
-						placeholder="Поиск запчастей в каталоге"
-					/>
-					<svg class="search-icon" width="22" height="22">
-						<use href="/ui-icons.svg#search"></use>
-					</svg>
-				</div>
-				<button class="where-to-search">
-					ГДЕ ИСКАТЬ? <svg
-						width="12"
-						height="12"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg
-					>
-				</button>
+				<form action="/search" method="GET" class="mobile-search-form">
+					<div class="search-field">
+						<input
+							type="search"
+							name="q"
+							id="mobile-search-input"
+							placeholder="Поиск запчастей в каталоге..."
+							required
+							minlength="4"
+							autocomplete="off"
+						/>
+						<button type="submit" class="search-submit-btn" aria-label="Искать">
+							<svg class="search-icon" width="22" height="22">
+								<use href="/ui-icons.svg#search"></use>
+							</svg>
+						</button>
+					</div>
+					<div class="mobile-search-select-wrap">
+						<select name="cat" class="mobile-search-select" aria-label="Где искать">
+							<option value="">ГДЕ ИСКАТЬ? (ВСЕ КАТЕГОРИИ)</option>
+							{categories.map((cat) => (
+								<option value={cat.slug || cat.uri?.replace(/\//g, '')}>
+									{cat.name} ({cat.count})
+								</option>
+							))}
+						</select>
+					</div>
+				</form>
 			</div>
 
 			<nav class="mobile-nav-list">
@@ -354,10 +373,23 @@ import "../styles/header.css"; // Подключаем общие стили
 	</Offcanvas>
 
 	<Offcanvas id="login-panel" side="right" title="ВХОД">
-		<form>
-			<input type="text" placeholder="Логин" />
-			<button type="submit">Войти</button>
-		</form>
+		<div class="offcanvas-login-wrap">
+			<form id="offcanvas-login-form" class="offcanvas-login-form">
+				<div class="field-group">
+					<label for="offcanvas-login-user">Email или логин</label>
+					<input type="text" id="offcanvas-login-user" name="username" required placeholder="example@mail.ru" />
+				</div>
+				<div class="field-group">
+					<label for="offcanvas-login-pass">Пароль</label>
+					<input type="password" id="offcanvas-login-pass" name="password" required placeholder="••••••••" />
+				</div>
+				<div id="offcanvas-login-error" class="offcanvas-login-error" style="display: none;"></div>
+				<button type="submit" class="offcanvas-login-btn">Войти</button>
+			</form>
+			<div class="offcanvas-login-footer">
+				<a href="/my-account">Регистрация и личный кабинет →</a>
+			</div>
+		</div>
 	</Offcanvas>
 
 	<div class="sticky-header" id="sticky-header">
@@ -467,9 +499,9 @@ import "../styles/header.css"; // Подключаем общие стили
 						<svg class="icon" width="28" height="28"
 							><use href="/ui-icons.svg#shopping-cart"></use></svg
 						>
-						<span class="badge yellow">2</span>
+						<span class="badge yellow" style="display: none;">0</span>
 					</div>
-					<span class="price">8 000 ₽</span>
+					<span class="price">0 ₽</span>
 				</div>
 
 				<div class="mobile-actions">
@@ -486,7 +518,7 @@ import "../styles/header.css"; // Подключаем общие стили
 							<svg class="icon" width="26" height="26">
 								<use href="/ui-icons.svg#shopping-cart"></use>
 							</svg>
-							<span class="badge yellow">2</span>
+							<span class="badge yellow" style="display: none;">0</span>
 						</div>
 					</div>
 				</div>
@@ -500,13 +532,46 @@ import "../styles/header.css"; // Подключаем общие стили
 		import { initMobileSubmenus } from "../scripts/mobile-menu.js";
 		import { initStickyHeader } from "../scripts/sticky-header.js";
 		import { initActiveMenu } from "../scripts/active-menu.js";
+		import { initCart } from "../scripts/cart.js";
 
-		// Инициализируем при загрузке страницы (поддержка Astro View Transitions)
-		// document.addEventListener("astro:page-load", () => {
 		initOffcanvas();
 		initMobileSubmenus();
 		initStickyHeader();
 		initActiveMenu();
-		// });
+		initCart();
+
+		// Обработка формы входа в offcanvas
+		const offcanvasLoginForm = document.getElementById('offcanvas-login-form');
+		offcanvasLoginForm?.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			const errEl = document.getElementById('offcanvas-login-error');
+			if (errEl) errEl.style.display = 'none';
+
+			const formData = new FormData(offcanvasLoginForm as HTMLFormElement);
+			const username = formData.get('username');
+			const password = formData.get('password');
+
+			try {
+				const res = await fetch('/api/auth/login', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ username, password }),
+				});
+				const data = await res.json();
+				if (data.success) {
+					window.location.href = '/my-account';
+				} else {
+					if (errEl) {
+						errEl.textContent = data.error || 'Ошибка входа';
+						errEl.style.display = 'block';
+					}
+				}
+			} catch (err) {
+				if (errEl) {
+					errEl.textContent = 'Ошибка сети';
+					errEl.style.display = 'block';
+				}
+			}
+		});
 	</script>
 </header>

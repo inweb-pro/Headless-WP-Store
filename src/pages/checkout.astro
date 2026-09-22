@@ -1,0 +1,659 @@
+---
+import Layout from '../components/Layout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+---
+
+<Layout title="Оформление заказа">
+	<div class="container checkout-container">
+		<Breadcrumbs items={[{ name: "Корзина", uri: "/cart" }, { name: "Оформление заказа", uri: "/checkout" }]} />
+
+		<h1 class="checkout-page-title">Оформление заказа</h1>
+
+		<div id="checkout-loading" class="checkout-loading">
+			<p>Загрузка корзины для оформления...</p>
+		</div>
+
+		<div id="checkout-empty" class="checkout-empty" style="display: none;">
+			<h2>Ваша корзина пуста</h2>
+			<p>Добавьте хотя бы один товар в корзину для оформления заказа.</p>
+			<a href="/shop" class="btn-catalog">Перейти в каталог</a>
+		</div>
+
+		<form id="checkout-form" class="checkout-form" style="display: none;">
+			<div class="checkout-grid">
+				<!-- Левая колонка: Способ доставки и данные покупателя -->
+				<div class="checkout-left">
+					<!-- 1. Способ доставки -->
+					<div class="checkout-block">
+						<h2 class="block-title">
+							<span class="step-num">1</span> Способ получения заказа
+						</h2>
+						<div class="shipping-methods-group">
+							<label class="method-card is-selected">
+								<input type="radio" name="shippingMethod" value="delivery" checked />
+								<div class="method-info">
+									<div class="method-title">Транспортной компанией / Доставка</div>
+									<div class="method-desc">СДЭК, ПЭК, Деловые Линии, Почта России (оплата доставки при получении)</div>
+								</div>
+							</label>
+
+							<label class="method-card">
+								<input type="radio" name="shippingMethod" value="pickup" />
+								<div class="method-info">
+									<div class="method-title">Самовывоз</div>
+									<div class="method-desc">г. Санкт-Петербург (бесплатно, по согласованию с менеджером)</div>
+								</div>
+							</label>
+						</div>
+					</div>
+
+					<!-- 2. Данные покупателя -->
+					<div class="checkout-block">
+						<h2 class="block-title">
+							<span class="step-num">2</span> Контактные данные
+						</h2>
+						<div class="form-fields">
+							<div class="field-group">
+								<label for="field-name">Ф.И.О. получателя <span class="req">*</span></label>
+								<input type="text" id="field-name" name="name" placeholder="Иванов Иван Иванович" required />
+							</div>
+
+							<div class="fields-row">
+								<div class="field-group">
+									<label for="field-phone">Телефон <span class="req">*</span></label>
+									<input type="tel" id="field-phone" name="phone" placeholder="+7 (999) 000-00-00" required />
+								</div>
+								<div class="field-group">
+									<label for="field-email">Email <span class="req">*</span></label>
+									<input type="email" id="field-email" name="email" placeholder="example@mail.ru" required />
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- 3. Адрес и паспортные данные (динамически скрываются при самовывозе) -->
+					<div id="delivery-details-block" class="checkout-block">
+						<h2 class="block-title">
+							<span class="step-num">3</span> Данные для доставки
+						</h2>
+						<div class="form-fields">
+							<div class="field-group">
+								<label for="field-city">Город назначения <span class="req">*</span></label>
+								<input type="text" id="field-city" name="city" placeholder="Например: Москва, Краснодар, Казань" required />
+							</div>
+
+							<div class="field-group">
+								<label for="field-passport">
+									Серия и номер паспорта <span class="req">*</span>
+								</label>
+								<input type="text" id="field-passport" name="passport" placeholder="4000 123456" required />
+								<small class="field-hint">Требуется транспортными компаниями (СДЭК, ПЭК, Деловые Линии) для выдачи заказа</small>
+							</div>
+
+							<div class="field-group">
+								<label for="field-address">Адрес доставки (улица, дом, кв.) или адрес ПВЗ <span class="req">*</span></label>
+								<input type="text" id="field-address" name="address" placeholder="ул. Ленина, д. 10, кв. 5 или адрес пункта выдачи" required />
+							</div>
+						</div>
+					</div>
+
+					<!-- 4. Способ оплаты -->
+					<div class="checkout-block">
+						<h2 class="block-title">
+							<span class="step-num">4</span> Способ оплаты
+						</h2>
+						<div class="payment-methods-group">
+							<label class="method-card is-selected">
+								<input type="radio" name="paymentMethod" value="bacs" checked />
+								<div class="method-info">
+									<div class="method-title">Банковской картой</div>
+									<div class="method-desc">Произведите платёж переводом на карту Сбербанк. Реквизиты для перевода мы отправим после согласования заказа с Вами.</div>
+								</div>
+							</label>
+
+							<label class="method-card">
+								<input type="radio" name="paymentMethod" value="cod" />
+								<div class="method-info">
+									<div class="method-title">Наличными / При получении</div>
+									<div class="method-desc">Оплата наличными при самовывозе со склада или курьеру по согласованию.</div>
+								</div>
+							</label>
+						</div>
+					</div>
+
+					<!-- 5. Примечание к заказу -->
+					<div class="checkout-block">
+						<div class="field-group">
+							<label for="field-notes">Примечание к заказу (необязательно)</label>
+							<textarea id="field-notes" name="orderNotes" rows="3" placeholder="Удобное время звонка, пожелания по транспортной компании и др."></textarea>
+						</div>
+					</div>
+				</div>
+
+				<!-- Правая колонка: Состав заказа и кнопка подтверждения -->
+				<div class="checkout-right">
+					<div class="order-summary-card">
+						<h2 class="summary-card-title">Ваш заказ</h2>
+
+						<div id="checkout-items-list" class="summary-items-list">
+							<!-- Будет заполнено JS -->
+						</div>
+
+						<div class="summary-calc">
+							<div class="calc-row">
+								<span>Товары:</span>
+								<span id="checkout-subtotal">0 ₽</span>
+							</div>
+							<div class="calc-row">
+								<span>Доставка:</span>
+								<span id="checkout-shipping-cost">По тарифам ТК</span>
+							</div>
+							<div class="calc-row total">
+								<span>Итого к оплате:</span>
+								<span id="checkout-total-sum" class="highlight-total">0 ₽</span>
+							</div>
+						</div>
+
+						<div id="checkout-error-msg" class="checkout-error-banner" style="display: none;"></div>
+
+						<button type="submit" id="submit-order-btn" class="btn-submit-order">
+							Подтвердить заказ
+						</button>
+
+						<p class="privacy-notice">
+							Нажимая «Подтвердить заказ», вы даете согласие на обработку персональных данных в соответствии с ФЗ №152-ФЗ РФ.
+						</p>
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+</Layout>
+
+<style>
+	.checkout-container {
+		max-width: var(--container, 1320px);
+		margin: 20px auto 60px;
+		padding: 0 15px;
+	}
+
+	.checkout-page-title {
+		font-family: "Play", sans-serif;
+		font-size: 1.8rem;
+		margin: 15px 0 25px;
+		color: #222;
+	}
+
+	.checkout-loading, .checkout-empty {
+		text-align: center;
+		padding: 60px 20px;
+		background: #fff;
+		border-radius: 8px;
+		border: 1px solid #eee;
+	}
+
+	.btn-catalog {
+		display: inline-block;
+		margin-top: 15px;
+		background: var(--color-primary, #ffdd00);
+		color: #1a1a1a;
+		padding: 12px 25px;
+		border-radius: 6px;
+		font-weight: 700;
+		text-decoration: none;
+	}
+
+	/* Двухколоночная сетка */
+	.checkout-grid {
+		display: grid;
+		grid-template-columns: 1fr 380px;
+		gap: 30px;
+		align-items: start;
+	}
+
+	@media (max-width: 960px) {
+		.checkout-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.checkout-block {
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 8px;
+		padding: 24px;
+		margin-bottom: 20px;
+	}
+
+	.block-title {
+		font-family: "Play", sans-serif;
+		font-size: 1.25rem;
+		margin: 0 0 18px;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		color: #222;
+	}
+
+	.step-num {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		background: var(--color-primary, #ffdd00);
+		color: #1a1a1a;
+		border-radius: 50%;
+		font-size: 13px;
+		font-weight: 700;
+	}
+
+	/* Карточки методов (доставка и оплата) */
+	.shipping-methods-group, .payment-methods-group {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.method-card {
+		display: flex;
+		gap: 14px;
+		padding: 14px 16px;
+		border: 1.5px solid #e0e0e0;
+		border-radius: 8px;
+		cursor: pointer;
+		transition: all 0.2s;
+		background: #fff;
+	}
+
+	.method-card:hover {
+		border-color: #ccc;
+	}
+
+	.method-card.is-selected {
+		border-color: var(--color-primary, #ffdd00);
+		background: #fffdf2;
+	}
+
+	.method-card input[type="radio"] {
+		margin-top: 3px;
+		accent-color: #222;
+	}
+
+	.method-title {
+		font-weight: 700;
+		font-size: 14px;
+		color: #222;
+		margin-bottom: 3px;
+	}
+
+	.method-desc {
+		font-size: 12px;
+		color: #666;
+		line-height: 1.35;
+	}
+
+	/* Поля форм */
+	.form-fields {
+		display: flex;
+		flex-direction: column;
+		gap: 15px;
+	}
+
+	.fields-row {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 15px;
+	}
+
+	@media (max-width: 600px) {
+		.fields-row {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.field-group {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.field-group label {
+		font-size: 13px;
+		font-weight: 600;
+		color: #444;
+	}
+
+	.field-group .req {
+		color: #e53935;
+	}
+
+	.field-group input, .field-group textarea {
+		padding: 11px 14px;
+		border: 1px solid #ddd;
+		border-radius: 6px;
+		font-size: 14px;
+		outline: none;
+		transition: border-color 0.2s;
+		background: #fff;
+		color: #333;
+	}
+
+	.field-group input:focus, .field-group textarea:focus {
+		border-color: var(--color-primary, #ffdd00);
+	}
+
+	.field-hint {
+		font-size: 11px;
+		color: #888;
+		line-height: 1.3;
+	}
+
+	/* Правая колонка / Сайдбар заказа */
+	.order-summary-card {
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 8px;
+		padding: 24px;
+		position: sticky;
+		top: 90px;
+	}
+
+	.summary-card-title {
+		font-family: "Play", sans-serif;
+		font-size: 1.25rem;
+		margin: 0 0 16px;
+		padding-bottom: 12px;
+		border-bottom: 2px solid #eee;
+	}
+
+	.summary-items-list {
+		max-height: 320px;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		margin-bottom: 18px;
+		padding-right: 5px;
+	}
+
+	:global(.summary-item-row) {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+		padding-bottom: 10px;
+		border-bottom: 1px solid #f2f2f2;
+	}
+
+	:global(.summary-item-img) {
+		width: 48px;
+		height: 48px;
+		object-fit: cover;
+		border-radius: 4px;
+		background: #f9f9f9;
+		flex-shrink: 0;
+	}
+
+	:global(.summary-item-details) {
+		flex: 1;
+		min-width: 0;
+	}
+
+	:global(.summary-item-name) {
+		font-size: 12px;
+		font-weight: 600;
+		color: #333;
+		line-height: 1.3;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	:global(.summary-item-sub) {
+		font-size: 12px;
+		color: #777;
+		margin-top: 2px;
+	}
+
+	:global(.summary-item-total) {
+		font-weight: 700;
+		font-size: 13px;
+		color: #e53935;
+		white-space: nowrap;
+	}
+
+	.summary-calc {
+		padding-top: 10px;
+		border-top: 1px solid #eee;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		margin-bottom: 20px;
+	}
+
+	.calc-row {
+		display: flex;
+		justify-content: space-between;
+		font-size: 14px;
+		color: #555;
+	}
+
+	.calc-row.total {
+		font-size: 1.25rem;
+		font-weight: 700;
+		color: #111;
+		padding-top: 10px;
+		border-top: 1px dashed #ddd;
+		margin-top: 6px;
+	}
+
+	.highlight-total {
+		color: #e53935;
+	}
+
+	.btn-submit-order {
+		width: 100%;
+		background: var(--color-primary, #ffdd00);
+		color: #1a1a1a;
+		border: none;
+		border-radius: 6px;
+		padding: 15px 20px;
+		font-size: 15px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		cursor: pointer;
+		transition: all 0.2s;
+		box-shadow: 0 4px 14px rgba(255, 221, 0, 0.4);
+	}
+
+	.btn-submit-order:hover:not(:disabled) {
+		background: #e6c700;
+		transform: translateY(-1px);
+	}
+
+	.btn-submit-order:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.checkout-error-banner {
+		background: #ffebee;
+		color: #c62828;
+		border: 1px solid #ffcdd2;
+		border-radius: 6px;
+		padding: 10px 14px;
+		font-size: 13px;
+		margin-bottom: 14px;
+		line-height: 1.4;
+	}
+
+	.privacy-notice {
+		font-size: 11px;
+		color: #999;
+		margin-top: 14px;
+		line-height: 1.35;
+		text-align: center;
+	}
+</style>
+
+<script>
+	import { cart } from '../scripts/cart.js';
+
+	const loadingEl = document.getElementById('checkout-loading');
+	const emptyEl = document.getElementById('checkout-empty');
+	const formEl = document.getElementById('checkout-form') as HTMLFormElement;
+	const itemsListEl = document.getElementById('checkout-items-list');
+	const subtotalEl = document.getElementById('checkout-subtotal');
+	const totalSumEl = document.getElementById('checkout-total-sum');
+	const shippingCostEl = document.getElementById('checkout-shipping-cost');
+	const deliveryBlock = document.getElementById('delivery-details-block');
+	const errorBanner = document.getElementById('checkout-error-msg');
+	const submitBtn = document.getElementById('submit-order-btn') as HTMLButtonElement;
+
+	// Динамическое скрытие/показ полей доставки при смене метода доставки
+	function handleShippingMethodChange(method: string) {
+		if (!deliveryBlock) return;
+		const cityInput = document.getElementById('field-city') as HTMLInputElement;
+		const passportInput = document.getElementById('field-passport') as HTMLInputElement;
+		const addressInput = document.getElementById('field-address') as HTMLInputElement;
+
+		if (method === 'pickup') {
+			// Скрываем блок данных доставки и убираем обязательность
+			deliveryBlock.style.display = 'none';
+			if (cityInput) cityInput.required = false;
+			if (passportInput) passportInput.required = false;
+			if (addressInput) addressInput.required = false;
+			if (shippingCostEl) shippingCostEl.textContent = 'Бесплатно';
+		} else {
+			// Показываем блок доставки и возвращаем обязательность
+			deliveryBlock.style.display = 'block';
+			if (cityInput) cityInput.required = true;
+			if (passportInput) passportInput.required = true;
+			if (addressInput) addressInput.required = true;
+			if (shippingCostEl) shippingCostEl.textContent = 'По тарифам ТК';
+		}
+	}
+
+	// Выделение активной карточки способа доставки / оплаты
+	function setupRadioCardHighlight(name: string) {
+		document.querySelectorAll(`input[name="${name}"]`).forEach((radio) => {
+			radio.addEventListener('change', (e) => {
+				const target = e.target as HTMLInputElement;
+				document.querySelectorAll(`input[name="${name}"]`).forEach((r) => {
+					r.closest('.method-card')?.classList.remove('is-selected');
+				});
+				target.closest('.method-card')?.classList.add('is-selected');
+
+				if (name === 'shippingMethod') {
+					handleShippingMethodChange(target.value);
+				}
+			});
+		});
+	}
+
+	// Отрисовка товаров в правом сайдбаре
+	function renderOrderItems(cartData: any) {
+		if (!itemsListEl) return;
+		const items = cartData?.contents?.nodes || [];
+
+		itemsListEl.innerHTML = items.map((item: any) => {
+			const prod = item.product?.node;
+			const img = prod?.image?.sourceUrl || '/placeholder.png';
+			return `
+				<div class="summary-item-row">
+					<img src="${img}" alt="" class="summary-item-img" />
+					<div class="summary-item-details">
+						<div class="summary-item-name">${prod?.name || 'Товар'}</div>
+						<div class="summary-item-sub">${item.quantity} шт. × ${prod?.price || ''}</div>
+					</div>
+					<div class="summary-item-total">${item.total || ''}</div>
+				</div>
+			`;
+		}).join('');
+
+		if (subtotalEl) subtotalEl.textContent = cartData.total;
+		if (totalSumEl) totalSumEl.textContent = cartData.total;
+	}
+
+	async function initCheckout() {
+		setupRadioCardHighlight('shippingMethod');
+		setupRadioCardHighlight('paymentMethod');
+
+		const cartData = await cart.fetchCart();
+		if (loadingEl) loadingEl.style.display = 'none';
+
+		if (!cartData || cartData.isEmpty || !cartData.contents?.nodes?.length) {
+			if (emptyEl) emptyEl.style.display = 'block';
+			return;
+		}
+
+		if (formEl) formEl.style.display = 'block';
+		renderOrderItems(cartData);
+
+		// Обработка отправки формы оформления заказа
+		formEl?.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			if (!submitBtn) return;
+
+			if (errorBanner) {
+				errorBanner.style.display = 'none';
+				errorBanner.textContent = '';
+			}
+
+			const formData = new FormData(formEl);
+			const payload = {
+				name: formData.get('name'),
+				phone: formData.get('phone'),
+				email: formData.get('email'),
+				shippingMethod: formData.get('shippingMethod'),
+				city: formData.get('city'),
+				passport: formData.get('passport'),
+				address: formData.get('address'),
+				paymentMethod: formData.get('paymentMethod'),
+				orderNotes: formData.get('orderNotes'),
+			};
+
+			submitBtn.disabled = true;
+			submitBtn.textContent = 'Оформляем заказ...';
+
+			try {
+				const res = await fetch('/api/checkout', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(payload),
+				});
+				const data = await res.json();
+
+				if (data.success && (data.orderNumber || data.orderId)) {
+					// Очищаем локальное состояние корзины
+					cart.state = null;
+					cart.updateUI();
+
+					// Перенаправляем на страницу успеха
+					const num = data.orderNumber || data.orderId;
+					const total = encodeURIComponent(data.total || '');
+					window.location.href = `/order-received?order=${num}&total=${total}`;
+				} else {
+					if (errorBanner) {
+						errorBanner.textContent = data.error || 'Произошла ошибка при создании заказа. Попробуйте еще раз.';
+						errorBanner.style.display = 'block';
+					}
+					submitBtn.disabled = false;
+					submitBtn.textContent = 'Подтвердить заказ';
+				}
+			} catch (err) {
+				console.error('Checkout submit error:', err);
+				if (errorBanner) {
+					errorBanner.textContent = 'Ошибка сети. Проверьте подключение и повторите попытку.';
+					errorBanner.style.display = 'block';
+				}
+				submitBtn.disabled = false;
+				submitBtn.textContent = 'Подтвердить заказ';
+			}
+		});
+	}
+
+	initCheckout();
+</script>

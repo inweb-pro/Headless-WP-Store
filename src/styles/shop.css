@@ -34,6 +34,15 @@
 	color: #a1a1a1;
 	font-weight: 500;
 }
+/* Скрываем последний элемент (название товара) визуально — для SEO остаётся в DOM */
+.breadcrumbs ol li:last-child:has(.current) {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+}
 
 .sidebar {
 	padding: 1rem;
@@ -183,8 +192,6 @@
 	align-items: center;
 	transition: transform 0.2s;
 }
-
-
 
 .load-more-btn {
 	display: flex;
