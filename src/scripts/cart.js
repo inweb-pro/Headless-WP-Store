@@ -321,12 +321,22 @@ export function initCart() {
 			return;
 		}
 
-		// 3. Удаление товара из мини-корзины
+		// 3. Удаление товара из корзины и выезжающей мини-корзины с подтверждением alert/confirm
 		const removeBtn = e.target.closest('[data-cart-remove]');
 		if (removeBtn) {
 			e.preventDefault();
 			const key = removeBtn.getAttribute('data-cart-remove');
 			if (key) {
+				const confirmed = window.confirm('Вы уверены, что хотите удалить товар из корзины?');
+				if (!confirmed) return;
+
+				const itemEl = removeBtn.closest('[data-cart-row], .mini-cart-item');
+				if (itemEl) {
+					itemEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+					itemEl.style.opacity = '0.4';
+					itemEl.style.pointerEvents = 'none';
+				}
+
 				cart.remove(key);
 			}
 			return;
