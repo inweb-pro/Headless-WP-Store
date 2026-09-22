@@ -26,11 +26,13 @@ const currentSort = sortOptions[sortParam] || sortOptions.date_desc;
 
 const GET_PRODUCTS_SORTED = `
 	query GetProducts($first: Int = 12, $after: String, $orderBy: [ProductsOrderbyInput]) {
-		products(first: $first, after: $after, where: { orderby: $orderBy }) {
+		products(first: $first, after: $after, where: { orderby: $orderBy, stockStatus: IN_STOCK }) {
 			found
 			pageInfo { hasNextPage, endCursor }
 			nodes {
-				name, uri
+				databaseId
+				name
+				uri
 				... on ProductWithPricing { price, regularPrice }
 				image { sourceUrl, altText }
 			}

@@ -9,7 +9,7 @@ import type { SidebarCategoriesResult, CategoryNode } from "../lib/types";
 let categories: CategoryNode[] = [];
 try {
 	const data = await fetchGraphQL<SidebarCategoriesResult>(GET_SIDEBAR_CATEGORIES);
-	categories = data.productCategories?.nodes || [];
+	categories = (data.productCategories?.nodes || []).filter((c) => c.count > 0);
 } catch (e) {
 	console.error('[Header] Ошибка загрузки категорий для мобильного поиска:', (e as Error).message);
 }

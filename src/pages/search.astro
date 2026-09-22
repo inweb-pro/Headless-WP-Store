@@ -17,9 +17,10 @@ const catSlug = Astro.url.searchParams.get("cat")?.trim() || "";
 // Запрос с поддержкой фильтрации по категории (slug)
 const SEARCH_PRODUCTS = `
 	query SearchProducts($search: String!, $first: Int = 40, $category: String) {
-		products(where: { search: $search, category: $category }, first: $first) {
+		products(where: { search: $search, category: $category, stockStatus: IN_STOCK }, first: $first) {
 			found
 			nodes {
+				databaseId
 				name, uri
 				... on ProductWithPricing { price }
 				image { sourceUrl, altText }

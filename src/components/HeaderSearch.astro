@@ -17,7 +17,7 @@ import type { SidebarCategoriesResult, CategoryNode } from "../lib/types";
 let categories: CategoryNode[] = [];
 try {
 	const data = await fetchGraphQL<SidebarCategoriesResult>(GET_SIDEBAR_CATEGORIES);
-	categories = data.productCategories?.nodes || [];
+	categories = (data.productCategories?.nodes || []).filter((c) => c.count > 0);
 } catch (e) {
 	console.error('[HeaderSearch] Ошибка загрузки категорий:', (e as Error).message);
 }
@@ -35,7 +35,7 @@ try {
 			placeholder="Поиск запчастей в каталоге ..."
 			autocomplete="off"
 			required
-			minlength="4"
+			minlength="3"
 		/>
 
 		<!-- Скрытое поле для категории -->
@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		filterDropdown.classList.remove('is-open');
 
 		// Перезапустить автозаполнение если есть текст
-		if (input.value.trim().length >= 4) {
+		if (input.value.trim().length >= 3) {
 			fetchAutocomplete(input.value.trim());
 		}
 
@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		var q = input.value.trim();
 		highlightIndex = -1;
 
-		if (q.length < 4) {
+		if (q.length < 3) {
 			acResults.classList.remove('is-open');
 			wrapper.classList.remove('has-results');
 			acResults.innerHTML = '';

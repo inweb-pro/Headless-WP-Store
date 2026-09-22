@@ -13,11 +13,12 @@ import { fetchGraphQL } from '../../lib/graphql';
 const AUTOCOMPLETE_QUERY = `
 	query Autocomplete($search: String!, $first: Int = 6, $category: String) {
 		products(
-			where: { search: $search, category: $category }
+			where: { search: $search, category: $category, stockStatus: IN_STOCK }
 			first: $first
 		) {
 			found
 			nodes {
+				databaseId
 				name
 				uri
 				... on ProductWithPricing { price }
@@ -32,7 +33,7 @@ export const GET: APIRoute = async ({ url }) => {
 	const catSlug = url.searchParams.get('cat')?.trim() || '';
 	const limit = Math.min(parseInt(url.searchParams.get('limit') || '6'), 20);
 
-	if (query.length < 4) {
+	if (query.length < 3) {
 		return new Response(JSON.stringify({ results: [], found: 0 }), {
 			headers: { 'Content-Type': 'application/json' },
 		});

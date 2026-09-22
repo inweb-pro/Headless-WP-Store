@@ -78,7 +78,7 @@ async function runTests() {
     email: `ivanov_${uniqueSuffix}@motopuzzle-test.ru`,
     city: 'Москва',
     address: 'ул. Тверская, д. 15, кв. 42',
-    passport: '4510 987654',
+    passport: '4510-987654',
     shippingMethod: 'delivery',
     paymentMethod: 'bacs',
     orderNotes: 'Автоматический тест оформления',
