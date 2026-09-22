@@ -135,17 +135,12 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 	// Инициализация при монтировании
 	renderWishlist();
 
-	// Синхронизация при изменении списка избранного
+	// Синхронизация при изменении списка избранного (в т.ч. после загрузки с сервера)
 	window.addEventListener('wishlist:updated', () => {
 		const items = wishlist.getItems();
-		if (items.length === 0) {
-			const emptyEl = document.getElementById('wishlist-empty-state');
-			const gridEl = document.getElementById('wishlist-grid');
-			if (emptyEl) emptyEl.style.display = 'block';
-			if (gridEl) {
-				gridEl.style.display = 'none';
-				gridEl.innerHTML = '';
-			}
+		const gridEl = document.getElementById('wishlist-grid');
+		if (!gridEl || items.length !== gridEl.children.length) {
+			renderWishlist();
 		}
 	});
 
@@ -277,26 +272,27 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 		top: 8px;
 		right: 8px;
 		z-index: 15;
-		background: #fff;
-		border: 1px solid #eee;
+		background: rgba(255, 255, 255, 0.82);
+		backdrop-filter: blur(4px);
+		border: 1px solid rgba(0, 0, 0, 0.08);
 		border-radius: 50%;
-		width: 32px;
-		height: 32px;
+		width: 30px;
+		height: 30px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
-		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-		color: #777;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+		color: #666;
 		transition: all 0.2s ease;
 		padding: 0;
 	}
 
 	:global(.wishlist-card .wishlist-remove-btn:hover) {
 		color: #e44d26;
-		background: #fff5f2;
-		border-color: #e44d26;
-		transform: scale(1.1);
+		background: rgba(255, 255, 255, 0.96);
+		border-color: rgba(228, 77, 38, 0.3);
+		transform: scale(1.08);
 	}
 
 	:global(.wishlist-card .product-info) {
