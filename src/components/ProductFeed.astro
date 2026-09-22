@@ -1,0 +1,148 @@
+---
+import ProductCard from './ProductCard.astro';
+import ProductCardSkeleton from './ProductCardSkeleton.astro';
+import LoadMore from './LoadMore.astro';
+import type { ProductBase } from '../lib/types';
+
+interface Props {
+	products?: ProductBase[] | null;
+	id?: string;
+	class?: string;
+	variant?: 'v1' | 'v2';
+	skeletonCount?: number;
+	priorityCount?: number;
+	hasLoadMore?: boolean;
+	cursor?: string;
+	slug?: string;
+	emptyMessage?: string;
+	showInitialSkeleton?: boolean;
+}
+
+const {
+	products,
+	id = 'products-grid',
+	class: className = '',
+	variant = 'v1',
+	skeletonCount = 4,
+	priorityCount = 0,
+	hasLoadMore = false,
+	cursor,
+	slug,
+	emptyMessage = 'Товары не найдены.',
+	showInitialSkeleton = true,
+} = Astro.props;
+
+const hasProducts = Array.isArray(products) && products.length > 0;
+const isPending = products === null || products === undefined;
+const enableInitialSkeleton = showInitialSkeleton && hasProducts;
+---
+
+<div class={`product-feed-wrapper ${className}`} data-has-initial-skeleton={enableInitialSkeleton ? "true" : undefined}>
+	{enableInitialSkeleton ? (
+		<>
+			<!-- Первичные скелетоны карточек при открытии страницы -->
+			<div id={id} class="products-grid initial-skeletons-active">
+				<ProductCardSkeleton count={skeletonCount} />
+			</div>
+
+			<!-- Скрытые реальные карточки товаров, заменяющие скелетоны после загрузки -->
+			<div class="initial-real-cards-stash" style="display: none;">
+				{products.map((p, i) => (
+					<ProductCard
+						product={p}
+						variant={variant}
+						priority={i < priorityCount}
+					/>
+				))}
+			</div>
+
+			<noscript>
+				<style>
+					.initial-skeletons-active { display: none !important; }
+					.initial-real-cards-stash { display: grid !important; }
+				</style>
+			</noscript>
+		</>
+	) : (
+		<div id={id} class="products-grid">
+			{isPending ? (
+				<ProductCardSkeleton count={skeletonCount} />
+			) : hasProducts ? (
+				products.map((p, i) => (
+					<ProductCard
+						product={p}
+						variant={variant}
+						priority={i < priorityCount}
+					/>
+				))
+			) : (
+				<p class="feed-empty-message">{emptyMessage}</p>
+			)}
+		</div>
+	)}
+
+	{hasLoadMore && cursor && (
+		<LoadMore cursor={cursor} slug={slug} />
+	)}
+</div>
+
+<script>
+	function revealInitialFeeds() {
+		const wrappers = document.querySelectorAll<HTMLElement>('.product-feed-wrapper[data-has-initial-skeleton="true"]');
+		wrappers.forEach((wrapper) => {
+			const stash = wrapper.querySelector<HTMLElement>('.initial-real-cards-stash');
+			const grid = wrapper.querySelector<HTMLElement>('.products-grid.initial-skeletons-active');
+			if (!stash || !grid) return;
+
+			// Естественная задержка 450мс для восприятия шиммера
+			setTimeout(() => {
+				const realCards = Array.from(stash.querySelectorAll('.product-card'));
+				const skeletons = Array.from(grid.querySelectorAll('.skeleton-card'));
+
+				realCards.forEach((card, index) => {
+					if (skeletons[index] && skeletons[index].parentNode) {
+						skeletons[index].replaceWith(card);
+					} else {
+						grid.appendChild(card);
+					}
+				});
+
+				// Удаляем оставшиеся скелетоны
+				skeletons.slice(realCards.length).forEach((s) => {
+					if (s.parentNode) s.remove();
+				});
+
+				stash.remove();
+				grid.classList.remove('initial-skeletons-active');
+				wrapper.removeAttribute('data-has-initial-skeleton');
+
+				// Обновляем состояния кнопок корзины и вишлиста
+				if (typeof window !== 'undefined') {
+					if ((window as any).MotoCart?.updateButtonStates) (window as any).MotoCart.updateButtonStates();
+					if ((window as any).MotoWishlist?.updateButtonStates) (window as any).MotoWishlist.updateButtonStates();
+				}
+			}, 450);
+		});
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', revealInitialFeeds);
+	} else {
+		revealInitialFeeds();
+	}
+	document.addEventListener('astro:page-load', revealInitialFeeds);
+</script>
+
+<style>
+	.product-feed-wrapper {
+		width: 100%;
+	}
+
+	.feed-empty-message {
+		grid-column: 1 / -1;
+		text-align: center;
+		padding: 40px 20px;
+		color: #777;
+		font-size: 1.1rem;
+	}
+</style>

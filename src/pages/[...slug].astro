@@ -12,6 +12,7 @@
  */
 import ShopLayout from "../layouts/ShopLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
+import ProductFeed from "../components/ProductFeed.astro";
 import AppImage from "../components/AppImage.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import LoadMore from "../components/LoadMore.astro";
@@ -137,17 +138,14 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 				<h1>
 					{node.name} ({((node as any).products?.nodes || []).length})
 				</h1>
-				<div id="products-grid" class="products-grid">
-					{(node as any).products?.nodes.map((p: any, i: number) => (
-						<ProductCard product={p} variant="v1" priority={i < 4} />
-					))}
-				</div>
-				{(node as any).products?.pageInfo.hasNextPage && (
-					<LoadMore
-						cursor={(node as any).products.pageInfo.endCursor}
-						slug={finalSlug}
-					/>
-				)}
+				<ProductFeed
+					products={(node as any).products?.nodes}
+					priorityCount={4}
+					skeletonCount={12}
+					hasLoadMore={(node as any).products?.pageInfo.hasNextPage}
+					cursor={(node as any).products?.pageInfo.endCursor}
+					slug={finalSlug}
+				/>
 			</section>
 		) : product ? (
 			<!-- Страница товара -->
@@ -316,11 +314,9 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 
 				<!-- Похожие товары -->
 				{related.length > 0 && (
-					<section class="related-products reveal-on-scroll">
+					<section class="related-products">
 						<h3>Похожие товары</h3>
-						<div class="products-grid">
-							{related.map((p) => <ProductCard product={p} variant="v1" />)}
-						</div>
+						<ProductFeed products={related} skeletonCount={4} id="related-products-grid" />
 					</section>
 				)}
 			</article>

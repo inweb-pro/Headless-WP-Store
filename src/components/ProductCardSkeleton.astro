@@ -1,0 +1,35 @@
+---
+interface Props {
+	count?: number;
+	class?: string;
+}
+
+const { count = 1, class: className = '' } = Astro.props;
+---
+
+{Array.from({ length: count }).map(() => (
+	<article class={`product-card skeleton-card ${className}`} aria-hidden="true">
+		<div class="product-card__inner">
+			<div class="skeleton-image"></div>
+			<div class="product-info">
+				<div class="skeleton-line skeleton-title-1"></div>
+				<div class="skeleton-line skeleton-title-2"></div>
+				<div class="skeleton-line skeleton-price"></div>
+			</div>
+		</div>
+	</article>
+))}
+
+<!-- Шаблон для клиентских скриптов (подгрузка, динамические ленты) -->
+<template id="product-card-skeleton-template">
+	<article class="product-card skeleton-card" aria-hidden="true">
+		<div class="product-card__inner">
+			<div class="skeleton-image"></div>
+			<div class="product-info">
+				<div class="skeleton-line skeleton-title-1"></div>
+				<div class="skeleton-line skeleton-title-2"></div>
+				<div class="skeleton-line skeleton-price"></div>
+			</div>
+		</div>
+	</article>
+</template>

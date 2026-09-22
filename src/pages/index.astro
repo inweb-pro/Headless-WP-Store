@@ -4,7 +4,7 @@
  * Commit 1.1: Переведено на GraphQL-клиент с обработкой ошибок.
  */
 import PageLayout from "../layouts/PageLayout.astro";
-import ProductCard from "../components/ProductCard.astro";
+import ProductFeed from "../components/ProductFeed.astro";
 import { fetchGraphQL } from "../lib/graphql";
 import { GET_LATEST_PRODUCTS } from "../lib/queries/products";
 import type { ProductBase } from "../lib/types";
@@ -31,14 +31,12 @@ try {
 		<p>Запчасти для мотоциклов BMW и не только.</p>
 	</section>
 
-	<section class="featured reveal-on-scroll">
+	<section class="featured">
 		<h2>Новые поступления</h2>
 		{error ? (
 			<p class="error-message">Не удалось загрузить товары. Попробуйте позже.</p>
 		) : (
-			<div class="products-grid">
-				{latestProducts.map((p, i) => <ProductCard product={p} variant="v1" priority={i < 2} />)}
-			</div>
+			<ProductFeed products={latestProducts} skeletonCount={5} priorityCount={2} />
 		)}
 	</section>
 </PageLayout>

@@ -6,9 +6,8 @@
  * URL параметр ?sort=price_asc.
  */
 import ShopLayout from "../layouts/ShopLayout.astro";
-import ProductCard from "../components/ProductCard.astro";
+import ProductFeed from "../components/ProductFeed.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
-import LoadMore from "../components/LoadMore.astro";
 import SortSelect from "../components/SortSelect.astro";
 import { fetchGraphQL } from "../lib/graphql";
 import type { ProductsResult } from "../lib/types";
@@ -74,14 +73,13 @@ const totalCount = products?.found || 0;
 			{error ? (
 				<p class="error-message">Не удалось загрузить каталог. Попробуйте позже.</p>
 			) : (
-				<>
-					<div id="products-grid" class="products-grid">
-						{products?.nodes.map((p, i) => <ProductCard product={p} variant="v1" priority={i < 4} />)}
-					</div>
-					{products?.pageInfo.hasNextPage && (
-						<LoadMore cursor={products.pageInfo.endCursor} />
-					)}
-				</>
+				<ProductFeed
+					products={products?.nodes}
+					priorityCount={4}
+					skeletonCount={12}
+					hasLoadMore={products?.pageInfo.hasNextPage}
+					cursor={products?.pageInfo.endCursor}
+				/>
 			)}
 		</section>
 	</div>
