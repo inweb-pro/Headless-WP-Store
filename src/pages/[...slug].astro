@@ -1,10 +1,26 @@
 ---
+/**
+ * Универсальный catch-all роутинг.
+ *
+ * Разрешает по slug: категорию (марка/модель) ИЛИ товар.
+ * Примеры URL:
+ *   /product-category/honda/           → категория «Honda» (марка)
+ *   /product-category/honda/cbr-1100/  → категория «CBR-1100» (модель)
+ *   /fara-dlya-honda-cbr1000rr-08-11/  → товар
+ *
+ * Commit 1.1–1.3: GraphQL-клиент, расширенные данные, новый шаблон товара.
+ */
 import ShopLayout from "../layouts/ShopLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import LoadMore from "../components/LoadMore.astro";
+import { fetchGraphQL } from "../lib/graphql";
+import { GET_NODE } from "../lib/queries/products";
+import type { NodeResult, ProductFull, CategoryNode } from "../lib/types";
 
 const { slug } = Astro.params;
+
+// Игнорируем запросы к статическим файлам
 if (
 	slug?.includes(".js") ||
 	slug?.includes(".map") ||
@@ -15,52 +31,54 @@ if (
 
 const slugParts = slug?.split("/").filter(Boolean) || [];
 const finalSlug = slugParts[slugParts.length - 1];
-const apiUri = import.meta.env.WORDPRESS_API_URL;
 
-const response = await fetch(apiUri, {
-	method: "POST",
-	headers: { "Content-Type": "application/json" },
-	body: JSON.stringify({
-		query: `
-      query GetNode($id: ID!) {
-        productCategory(id: $id, idType: SLUG) {
-          __typename, name, uri, count
-          ancestors { nodes { name, uri } }
-          products(first: 12) {
-            pageInfo { hasNextPage, endCursor }
-            nodes { name, uri, ... on ProductWithPricing { price }, image { sourceUrl } }
-          }
-        }
-        product(id: $id, idType: SLUG) {
-          __typename, name, uri, description, ... on ProductWithPricing { price }, image { sourceUrl }
-          productCategories { nodes { name, uri, ancestors { nodes { name, uri } } } }
-        }
-      }
-    `,
-		variables: { id: finalSlug },
-	}),
-});
+let data: NodeResult | null = null;
+let error: string | null = null;
 
-const { data } = await response.json();
+try {
+	data = await fetchGraphQL<NodeResult>(GET_NODE, { id: finalSlug });
+} catch (e) {
+	error = (e as Error).message;
+	console.error(`[slug: ${slug}] Ошибка:`, error);
+}
+
 const node = data?.productCategory || data?.product;
 if (!node) return Astro.redirect("/404");
 
 const isCategory = node.__typename === "ProductCategory";
 
-// Логика крошек (остается без изменений)
-let breadcrumbItems = [];
+// Если товар закончился / не в наличии — полностью скрываем со страниц сайта (404)
+if (!isCategory) {
+	const product = node as ProductFull;
+	if (product.stockStatus !== 'IN_STOCK') {
+		return Astro.redirect('/404');
+	}
+}
+
+// --- Хлебные крошки ---
+// Строим из иерархии категорий (марка → модель → товар)
+let breadcrumbItems: Array<{ name: string; uri: string }> = [];
+
 if (isCategory) {
-	const ancestors = node.ancestors?.nodes
-		? [...node.ancestors.nodes].reverse()
+	const catNode = node as NodeResult['productCategory'] & {};
+	const ancestors = catNode.ancestors?.nodes
+		? [...catNode.ancestors.nodes].reverse()
 		: [];
 	breadcrumbItems = [...ancestors, { name: node.name, uri: node.uri }];
 } else {
-	const categories = node.productCategories?.nodes || [];
-	const deepestCategory = categories.reduce((deepest, current) => {
-		const deepestLen = deepest?.ancestors?.nodes?.length || 0;
-		const currentLen = current?.ancestors?.nodes?.length || 0;
-		return currentLen > deepestLen ? current : deepest;
-	}, categories[0]);
+	const product = node as ProductFull;
+	const categories = product.productCategories?.nodes || [];
+
+	// Находим самую глубокую категорию (модель мотоцикла)
+	const deepestCategory = categories.reduce(
+		(deepest: CategoryNode | null, current: CategoryNode) => {
+			const deepestLen = deepest?.ancestors?.nodes?.length || 0;
+			const currentLen = current?.ancestors?.nodes?.length || 0;
+			return currentLen > deepestLen ? current : deepest;
+		},
+		categories[0] || null,
+	);
+
 	if (deepestCategory) {
 		const ancestors = deepestCategory.ancestors?.nodes
 			? [...deepestCategory.ancestors.nodes].reverse()
@@ -74,58 +92,134 @@ if (isCategory) {
 		breadcrumbItems = [{ name: node.name, uri: node.uri }];
 	}
 }
+
+// Для товара — готовим дополнительные данные
+const product = !isCategory ? (node as ProductFull) : null;
+const gallery = product?.galleryImages?.nodes || [];
+const allImages = product?.image
+	? [product.image, ...gallery]
+	: gallery;
+const attributes = product?.attributes?.nodes || [];
+const related = product?.related?.nodes || [];
+
+// Извлекаем марку и модель из категорий (для отображения)
+const categories = product?.productCategories?.nodes || [];
+const brandCategory = categories.find((c) => !c.ancestors?.nodes?.length);
+const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) > 0);
 ---
 
-<ShopLayout title={node.name} currentUri={node.uri}>
+<ShopLayout
+	title={node.name}
+	currentUri={node.uri}
+	type={product ? 'product' : 'website'}
+	description={product?.shortDescription?.replace(/<[^>]*>/g, '').slice(0, 160) || undefined}
+	image={product?.image?.sourceUrl}
+	breadcrumbs={breadcrumbItems}
+	product={product ? {
+		name: product.name,
+		description: product.description,
+		image: product.image?.sourceUrl,
+		sku: product.sku,
+		price: product.price,
+		stockStatus: product.stockStatus,
+		brand: brandCategory?.name,
+		url: product.uri,
+	} : undefined}
+>
 	<div class="content-wrapper">
 		<Breadcrumbs items={breadcrumbItems} />
-		{
-			isCategory ? (
-				<section class="category-view">
-					<h1>
-						{node.name} ({node.count || 0})
-					</h1>
-					<div id="products-grid" class="products-grid">
-						{node.products?.nodes.map((p) => (
-							<ProductCard product={p} variant="v1" />
-						))}
-					</div>
-					{node.products?.pageInfo.hasNextPage && (
-						<LoadMore
-							cursor={node.products.pageInfo.endCursor}
-							slug={finalSlug}
-						/>
-					)}
-				</section>
-			) : (
-				<article class="product-detail">
-					<div class="product-main">
-						<div class="product-image">
+		{error ? (
+			<p class="error-message">Не удалось загрузить данные. Попробуйте позже.</p>
+		) : isCategory ? (
+			<!-- Страница категории (марка или модель мотоцикла) -->
+			<section class="category-view">
+				<h1>
+					{node.name} ({((node as any).products?.nodes || []).length})
+				</h1>
+				<div id="products-grid" class="products-grid">
+					{(node as any).products?.nodes.map((p: any) => (
+						<ProductCard product={p} variant="v1" />
+					))}
+				</div>
+				{(node as any).products?.pageInfo.hasNextPage && (
+					<LoadMore
+						cursor={(node as any).products.pageInfo.endCursor}
+						slug={finalSlug}
+					/>
+				)}
+			</section>
+		) : product ? (
+			<!-- Страница товара -->
+			<article class="product-detail">
+				<div class="product-main">
+					<!-- Галерея изображений -->
+					<div class="product-gallery">
+						<div class="gallery-main">
 							<img
-								src={node.image?.sourceUrl || "/placeholder.jpg"}
-								alt={node.name}
+								id="main-image"
+								src={allImages[0]?.sourceUrl || "/placeholder.jpg"}
+								alt={allImages[0]?.altText || product.name}
+								width={allImages[0]?.mediaDetails?.width || 600}
+								height={allImages[0]?.mediaDetails?.height || 600}
+								loading="eager"
 							/>
 						</div>
+						{allImages.length > 1 && (
+							<div class="gallery-thumbs">
+								{allImages.map((img, i) => (
+									<button
+										class={`thumb ${i === 0 ? 'active' : ''}`}
+										data-src={img.sourceUrl}
+										data-alt={img.altText || product.name}
+									>
+										<img
+											src={img.sourceUrl}
+											alt={img.altText || `${product.name} - фото ${i + 1}`}
+											width={80}
+											height={80}
+											loading="lazy"
+										/>
+									</button>
+								))}
+							</div>
+						)}
+					</div>
 
-						<div class="product-info">
-							<h1>{node.name}</h1>
-							<div class="price-box" set:html={node.price} />
-							<button class="buy-btn">В КОРЗИНУ</button>
+					<!-- Информация о товаре -->
+					<div class="product-info">
+						<h1>{product.name}</h1>
 
-							{node.description && (
-								<div class="description">
-									<h3>Описание:</h3>
-									<div class="desc-content" set:html={node.description} />
-								</div>
+						{product.sku && (
+							<p class="product-sku">Артикул: <strong>{product.sku}</strong></p>
+						)}
+
+						<!-- Марка/модель из категорий -->
+						{(brandCategory || modelCategory) && (
+							<div class="product-meta-cats">
+								{brandCategory && (
+									<p>Марка: <a href={brandCategory.uri}>{brandCategory.name}</a></p>
+								)}
+								{modelCategory && (
+									<p>Модель: <a href={modelCategory.uri}>{modelCategory.name}</a></p>
+								)}
+							</div>
+						)}
+
+						<div class="price-box" set:html={product.price} />
+
+						{product.onSale && product.regularPrice && (
+							<div class="old-price" set:html={product.regularPrice} />
+						)}
+
+						<!-- Наличие -->
+						<p class={`stock-status ${product.stockStatus === 'IN_STOCK' ? 'in-stock' : 'out-of-stock'}`}>
+							{product.stockStatus === 'IN_STOCK' ? '✓ В наличии' : '✗ Нет в наличии'}
+							{product.stockQuantity && product.stockQuantity > 0 && (
+								<span> ({product.stockQuantity} шт.)</span>
 							)}
 						</p>
 
 						<div class="product-buy-wrap">
-							<div class="product-qty-select">
-								<button type="button" class="qty-btn" onclick="const i=this.nextElementSibling; if(parseInt(i.value)>1) i.value=parseInt(i.value)-1;">−</button>
-								<input type="number" class="product-qty-input" data-product-quantity value="1" min="1" max={product.stockQuantity || 99} />
-								<button type="button" class="qty-btn" onclick="const i=this.previousElementSibling; i.value=parseInt(i.value)+1;">+</button>
-							</div>
 							<button class="buy-btn" data-add-to-cart={product.databaseId} disabled={product.stockStatus !== 'IN_STOCK'}>
 								В КОРЗИНУ
 							</button>
@@ -165,10 +259,10 @@ if (isCategory) {
 						<div class="products-grid">
 							{related.map((p) => <ProductCard product={p} variant="v1" />)}
 						</div>
-					</div>
-				</article>
-			)
-		}
+					</section>
+				)}
+			</article>
+		) : null}
 	</div>
 </ShopLayout>
 
@@ -366,6 +460,20 @@ if (isCategory) {
 	.buy-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	.buy-btn.is-in-cart {
+		background: #e2e2e2 !important;
+		color: #555 !important;
+		cursor: not-allowed !important;
+		border: 1px solid #d0d0d0 !important;
+		transform: none !important;
+		box-shadow: none !important;
+	}
+
+	.buy-btn.is-in-cart:hover {
+		background: #d8d8d8 !important;
+		transform: none !important;
 	}
 
 	/* Атрибуты */

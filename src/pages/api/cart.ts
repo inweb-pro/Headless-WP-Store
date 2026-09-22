@@ -81,9 +81,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 		);
 	} catch (e) {
 		console.error('[Cart POST Error]', (e as Error).message);
+		let msg = (e as Error).message.replace(/^GraphQL ошибка:\s*/i, '');
+		if (msg.includes('не помещается в корзину') || msg.includes('нет в наличии')) {
+			msg = 'Этот товар уже находится в вашей корзине (в наличии 1 шт.)';
+		}
 		return new Response(
-			JSON.stringify({ success: false, error: (e as Error).message }),
-			{ status: 500, headers: { 'Content-Type': 'application/json' } },
+			JSON.stringify({ success: false, error: msg }),
+			{ status: 400, headers: { 'Content-Type': 'application/json' } },
 		);
 	}
 };

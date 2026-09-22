@@ -36,6 +36,11 @@ export function initLoadMore() {
       // Вставляем карточки в сетку 
       grid.insertAdjacentHTML('beforeend', temp.innerHTML);
 
+      // Обновляем состояния кнопок для новых карточек
+      if (typeof window !== 'undefined' && window.MotoCart && typeof window.MotoCart.updateButtonStates === 'function') {
+        window.MotoCart.updateButtonStates();
+      }
+
       // Обновляем кнопку или удаляем её
       if (hasNextPage && newCursor) {
         btn.setAttribute("data-cursor", newCursor);
