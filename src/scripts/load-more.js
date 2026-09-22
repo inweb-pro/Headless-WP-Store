@@ -52,7 +52,7 @@ export function initLoadMore() {
     // 2. Плавно скроллим к первому новому скелетону с отступом под шапку
     const firstSkeleton = createdSkeletons[0];
     if (firstSkeleton) {
-      const headerOffset = 90;
+      const headerOffset = 80;
       const elementPosition = firstSkeleton.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
       window.scrollTo({

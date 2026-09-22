@@ -307,7 +307,7 @@ const price = product.price || "Цена по запросу";
 
 		.add-to-cart-btn {
 			width: 130px; /* Не во всю ширину, как в первом варианте */
-			height: 38px;
+			height: 40px;
 			background: var(--color-primary, #ffdd00);
 			color: #1a1a1a;
 			border: none;
@@ -319,6 +319,9 @@ const price = product.price || "Цена по запросу";
 			font-size: 0.85rem;
 			text-transform: uppercase;
 			letter-spacing: 0.5px;
+			/* Чтобы при увеличении карточки scale(1.15) кнопка визуально сохраняла свой изначальный размер */
+			transform: scale(calc(1 / 1.15));
+			transform-origin: center center;
 			transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 
 			.btn-content-wrapper {
@@ -361,7 +364,7 @@ const price = product.price || "Цена по запросу";
 			}
 
 			&:active {
-				transform: scale(0.98);
+				transform: scale(calc(0.96 / 1.15));
 			}
 
 			&.is-in-cart {
@@ -370,7 +373,7 @@ const price = product.price || "Цена по запросу";
 				border: 1px solid #dcdcdc !important;
 				cursor: default !important;
 				box-shadow: none !important;
-				transform: none !important;
+				transform: scale(calc(1 / 1.15)) !important;
 
 				.btn-text {
 					transform: none !important;

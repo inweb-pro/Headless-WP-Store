@@ -255,16 +255,13 @@ export const cart = {
 					<div class="mini-cart-item-info">
 						<a href="${prod?.uri || '#'}" class="mini-cart-item-title">${prod?.name || 'Товар'}</a>
 						<div class="mini-cart-item-price">${price}</div>
-						<div class="mini-cart-item-actions">
-							<span class="mini-cart-item-qty">1 шт.</span>
-							<button type="button" class="mini-cart-remove" data-cart-remove="${item.key}" title="Удалить из корзины">
-								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-									<line x1="18" y1="6" x2="6" y2="18"></line>
-									<line x1="6" y1="6" x2="18" y2="18"></line>
-								</svg>
-							</button>
-						</div>
 					</div>
+					<button type="button" class="mini-cart-remove" data-cart-remove="${item.key}" title="Удалить из корзины" aria-label="Удалить из корзины">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<line x1="18" y1="6" x2="6" y2="18"></line>
+							<line x1="6" y1="6" x2="18" y2="18"></line>
+						</svg>
+					</button>
 				</div>
 			`;
 		}).join('');
@@ -281,7 +278,7 @@ export const cart = {
 					</div>
 					<div class="mini-cart-buttons">
 						<a href="/checkout" class="btn-checkout">Оформить заказ</a>
-						<a href="/cart" class="btn-view-cart">В корзину</a>
+						<a href="/cart" class="btn-view-cart">В КОРЗИНУ</a>
 					</div>
 				</div>
 			</div>
