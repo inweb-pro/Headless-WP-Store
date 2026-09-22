@@ -60,16 +60,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 		const lastName = nameParts.length > 1 ? nameParts[0] : '';
 		const firstName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
 
-		// Формируем примечание к заказу с деталями доставки и паспорта
-		const shippingTitle = shippingMethod === 'pickup' ? 'Самовывоз (СПб)' : 'Транспортная компания / Доставка';
-		let finalNote = `[Способ доставки: ${shippingTitle}]`;
-		if (passport) {
-			finalNote += `\n[Паспорт: ${passport}]`;
-		}
-		if (orderNotes) {
-			finalNote += `\n\nПримечание клиента: ${orderNotes}`;
-		}
+		// Примечание клиента содержит ТОЛЬКО то, что клиент ввёл сам
+		const finalNote = orderNotes ? orderNotes.trim() : '';
 
+		const shippingTitle = shippingMethod === 'pickup' ? 'Самовывоз (г. Санкт-Петербург)' : 'Транспортная компания / Доставка';
 		const deliveryAddress = shippingMethod === 'pickup' ? 'Самовывоз со склада' : (address || '');
 		const deliveryCity = shippingMethod === 'pickup' ? 'Санкт-Петербург' : (city || '');
 
@@ -88,16 +82,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 				address1: deliveryAddress,
 				country: 'RU',
 			},
-			shipping: {
-				firstName,
-				lastName,
-				city: deliveryCity,
-				address1: deliveryAddress,
-				country: 'RU',
-			},
 			metaData: [
 				{ key: 'passport', value: passport || '' },
 				{ key: 'delivery_type', value: shippingMethod },
+				{ key: 'shipping_method_title', value: shippingTitle },
 			],
 		};
 
@@ -151,6 +139,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 					address: deliveryAddress,
 					passport,
 					orderId: extractedId,
+					shippingMethod,
 				}),
 			});
 
@@ -162,7 +151,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 					cookies.set('auth_token', authToken, {
 						path: '/',
 						maxAge: 60 * 60 * 24 * 30, // 30 дней
-						httpOnly: true,
+						httpOnly: false,
 						sameSite: 'lax',
 					});
 				}
