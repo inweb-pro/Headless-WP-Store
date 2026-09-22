@@ -1,0 +1,392 @@
+---
+import Layout from '../components/Layout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+---
+
+<Layout title="Корзина">
+	<div class="container cart-page-container">
+		<Breadcrumbs items={[{ name: "Корзина", uri: "/cart" }]} />
+
+		<h1 class="cart-title">Корзина товаров</h1>
+
+		<div id="cart-page-content" class="cart-page-content">
+			<!-- Загрузка / скелетон -->
+			<div class="cart-loading">
+				<p>Загрузка корзины...</p>
+			</div>
+		</div>
+	</div>
+</Layout>
+
+<style>
+	.cart-page-container {
+		max-width: var(--container, 1320px);
+		margin: 20px auto 60px;
+		padding: 0 15px;
+	}
+
+	.cart-title {
+		font-family: "Play", sans-serif;
+		font-size: 1.8rem;
+		margin: 15px 0 25px;
+		color: #222;
+	}
+
+	.cart-page-content {
+		min-height: 250px;
+	}
+
+	.cart-loading {
+		text-align: center;
+		padding: 50px 0;
+		color: #888;
+	}
+
+	/* Двухколоночный лейаут */
+	:global(.cart-layout) {
+		display: grid;
+		grid-template-columns: 1fr 340px;
+		gap: 30px;
+		align-items: start;
+	}
+
+	@media (max-width: 900px) {
+		:global(.cart-layout) {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	/* Таблица товаров */
+	:global(.cart-table-wrap) {
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	:global(.cart-table) {
+		width: 100%;
+		border-collapse: collapse;
+		text-align: left;
+	}
+
+	:global(.cart-table th) {
+		background: #fafafa;
+		padding: 12px 16px;
+		font-size: 13px;
+		color: #777;
+		font-weight: 600;
+		border-bottom: 1px solid #eee;
+	}
+
+	:global(.cart-table td) {
+		padding: 16px;
+		border-bottom: 1px solid #f0f0f0;
+		vertical-align: middle;
+	}
+
+	:global(.cart-product-cell) {
+		display: flex;
+		align-items: center;
+		gap: 15px;
+	}
+
+	:global(.cart-prod-img) {
+		width: 65px;
+		height: 65px;
+		object-fit: cover;
+		border-radius: 6px;
+		background: #f9f9f9;
+		flex-shrink: 0;
+	}
+
+	:global(.cart-prod-name) {
+		font-size: 14px;
+		font-weight: 600;
+		color: #333;
+		text-decoration: none;
+		line-height: 1.4;
+	}
+
+	:global(.cart-prod-name:hover) {
+		color: #000;
+		text-decoration: underline;
+	}
+
+	:global(.cart-price-cell) {
+		font-weight: 700;
+		color: #333;
+		white-space: nowrap;
+	}
+
+	:global(.cart-total-cell) {
+		font-weight: 700;
+		color: #e53935;
+		white-space: nowrap;
+		font-size: 15px;
+	}
+
+	:global(.cart-qty-wrap) {
+		display: inline-flex;
+		align-items: center;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		overflow: hidden;
+		background: #fff;
+	}
+
+	:global(.cart-qty-wrap .qty-btn) {
+		background: #f5f5f5;
+		border: none;
+		width: 28px;
+		height: 28px;
+		cursor: pointer;
+		font-size: 14px;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	:global(.cart-qty-wrap .qty-btn:hover) {
+		background: #e0e0e0;
+	}
+
+	:global(.cart-qty-wrap .qty-val) {
+		padding: 0 10px;
+		font-size: 13px;
+		font-weight: 700;
+	}
+
+	:global(.cart-remove-btn) {
+		background: none;
+		border: none;
+		color: #bbb;
+		cursor: pointer;
+		padding: 6px;
+		display: flex;
+		align-items: center;
+		transition: color 0.15s;
+	}
+
+	:global(.cart-remove-btn:hover) {
+		color: #e53935;
+	}
+
+	/* Сайдбар корзины */
+	:global(.cart-summary-box) {
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 8px;
+		padding: 20px;
+	}
+
+	:global(.cart-summary-title) {
+		font-size: 1.2rem;
+		font-family: "Play", sans-serif;
+		margin: 0 0 16px;
+		padding-bottom: 12px;
+		border-bottom: 2px solid #eee;
+	}
+
+	:global(.summary-row) {
+		display: flex;
+		justify-content: space-between;
+		font-size: 14px;
+		margin-bottom: 12px;
+		color: #555;
+	}
+
+	:global(.summary-row.total) {
+		font-size: 1.2rem;
+		font-weight: 700;
+		color: #111;
+		padding-top: 12px;
+		border-top: 1px solid #eee;
+		margin-top: 15px;
+	}
+
+	:global(.summary-row.total .total-amount) {
+		color: #e53935;
+	}
+
+	:global(.summary-notice) {
+		font-size: 12px;
+		color: #888;
+		margin: 10px 0 20px;
+		line-height: 1.4;
+	}
+
+	:global(.btn-go-checkout) {
+		display: block;
+		text-align: center;
+		background: var(--color-primary, #ffdd00);
+		color: #1a1a1a;
+		padding: 14px;
+		border-radius: 6px;
+		font-weight: 700;
+		font-size: 15px;
+		text-decoration: none;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		transition: all 0.2s;
+		box-shadow: 0 4px 12px rgba(255, 221, 0, 0.35);
+	}
+
+	:global(.btn-go-checkout:hover) {
+		background: #e6c700;
+		transform: translateY(-1px);
+	}
+
+	:global(.btn-return-shop) {
+		display: block;
+		text-align: center;
+		margin-top: 10px;
+		color: #666;
+		font-size: 13px;
+		text-decoration: none;
+	}
+
+	:global(.btn-return-shop:hover) {
+		text-decoration: underline;
+		color: #111;
+	}
+
+	/* Пустая корзина */
+	:global(.cart-empty-state) {
+		text-align: center;
+		padding: 60px 20px;
+		background: #fff;
+		border-radius: 8px;
+		border: 1px solid #eee;
+	}
+
+	:global(.cart-empty-state svg) {
+		margin-bottom: 20px;
+	}
+
+	:global(.cart-empty-title) {
+		font-size: 1.4rem;
+		font-family: "Play", sans-serif;
+		margin-bottom: 10px;
+	}
+
+	:global(.cart-empty-desc) {
+		color: #777;
+		margin-bottom: 25px;
+		font-size: 14px;
+	}
+</style>
+
+<script>
+	import { cart } from '../scripts/cart.js';
+
+	function renderCartPage(cartData: any) {
+		const container = document.getElementById('cart-page-content');
+		if (!container) return;
+
+		const items = cartData?.contents?.nodes || [];
+
+		if (!items || items.length === 0) {
+			container.innerHTML = `
+				<div class="cart-empty-state">
+					<svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+						<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+						<line x1="3" y1="6" x2="21" y2="6"></line>
+						<path d="M16 10a4 4 0 0 1-8 0"></path>
+					</svg>
+					<h2 class="cart-empty-title">Ваша корзина пуста</h2>
+					<p class="cart-empty-desc">В корзине пока нет добавленных товаров. Перейдите в каталог запчастей, чтобы найти нужную деталь.</p>
+					<a href="/shop" class="btn-go-checkout" style="display: inline-block; width: auto; padding: 12px 30px;">Перейти в каталог</a>
+				</div>
+			`;
+			return;
+		}
+
+		const rowsHtml = items.map((item: any) => {
+			const prod = item.product?.node;
+			const imageSrc = prod?.image?.sourceUrl || '/placeholder.png';
+			const unitPrice = prod?.price || '';
+			const itemTotal = item.total || '';
+
+			return `
+				<tr data-cart-row="${item.key}">
+					<td>
+						<div class="cart-product-cell">
+							<a href="${prod?.uri || '#'}" class="cart-prod-link">
+								<img src="${imageSrc}" alt="${prod?.name || ''}" class="cart-prod-img" />
+							</a>
+							<a href="${prod?.uri || '#'}" class="cart-prod-name">${prod?.name || 'Товар'}</a>
+						</div>
+					</td>
+					<td class="cart-price-cell">${unitPrice}</td>
+					<td>
+						<div class="cart-qty-wrap">
+							<button type="button" class="qty-btn" data-cart-dec="${item.key}" data-qty="${item.quantity}">−</button>
+							<span class="qty-val">${item.quantity}</span>
+							<button type="button" class="qty-btn" data-cart-inc="${item.key}" data-qty="${item.quantity}">+</button>
+						</div>
+					</td>
+					<td class="cart-total-cell">${itemTotal}</td>
+					<td>
+						<button type="button" class="cart-remove-btn" data-cart-remove="${item.key}" title="Удалить">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<line x1="18" y1="6" x2="6" y2="18"></line>
+								<line x1="6" y1="6" x2="18" y2="18"></line>
+							</svg>
+						</button>
+					</td>
+				</tr>
+			`;
+		}).join('');
+
+		container.innerHTML = `
+			<div class="cart-layout">
+				<div class="cart-table-wrap">
+					<table class="cart-table">
+						<thead>
+							<tr>
+								<th>Товар</th>
+								<th>Цена</th>
+								<th>Количество</th>
+								<th>Итого</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							${rowsHtml}
+						</tbody>
+					</table>
+				</div>
+
+				<div class="cart-summary-box">
+					<h3 class="cart-summary-title">Итог заказа</h3>
+					<div class="summary-row">
+						<span>Товары (${cartData.contents.itemCount} шт.):</span>
+						<span>${cartData.total}</span>
+					</div>
+					<div class="summary-row total">
+						<span>К оплате:</span>
+						<span class="total-amount">${cartData.total}</span>
+					</div>
+					<p class="summary-notice">Стоимость и способ доставки рассчитываются на следующем шаге оформления.</p>
+					<a href="/checkout" class="btn-go-checkout">Оформить заказ</a>
+					<a href="/shop" class="btn-return-shop">← Продолжить покупки</a>
+				</div>
+			</div>
+		`;
+	}
+
+	async function init() {
+		// Получаем данные корзины
+		const cartData = await cart.fetchCart();
+		renderCartPage(cartData);
+
+		// Подписываемся на события изменения корзины
+		window.addEventListener('cart:updated', (e: any) => {
+			renderCartPage(e.detail);
+		});
+	}
+
+	init();
+</script>

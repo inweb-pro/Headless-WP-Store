@@ -156,25 +156,65 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 								loading="eager"
 							/>
 						</div>
-						{allImages.length > 1 && (
-							<div class="gallery-thumbs">
-								{allImages.map((img, i) => (
-									<button
-										class={`thumb ${i === 0 ? 'active' : ''}`}
-										data-src={img.sourceUrl}
-										data-alt={img.altText || product.name}
-									>
-										<img
-											src={img.sourceUrl}
-											alt={img.altText || `${product.name} - фото ${i + 1}`}
-											width={80}
-											height={80}
-											loading="lazy"
-										/>
-									</button>
-								))}
+
+						<div class="product-info">
+							<h1>{node.name}</h1>
+							<div class="price-box" set:html={node.price} />
+							<button class="buy-btn">В КОРЗИНУ</button>
+
+							{node.description && (
+								<div class="description">
+									<h3>Описание:</h3>
+									<div class="desc-content" set:html={node.description} />
+								</div>
+							)}
+						</p>
+
+						<div class="product-buy-wrap">
+							<div class="product-qty-select">
+								<button type="button" class="qty-btn" onclick="const i=this.nextElementSibling; if(parseInt(i.value)>1) i.value=parseInt(i.value)-1;">−</button>
+								<input type="number" class="product-qty-input" data-product-quantity value="1" min="1" max={product.stockQuantity || 99} />
+								<button type="button" class="qty-btn" onclick="const i=this.previousElementSibling; i.value=parseInt(i.value)+1;">+</button>
+							</div>
+							<button class="buy-btn" data-add-to-cart={product.databaseId} disabled={product.stockStatus !== 'IN_STOCK'}>
+								В КОРЗИНУ
+							</button>
+						</div>
+
+						<!-- Атрибуты товара (если есть помимо категорий) -->
+						{attributes.length > 0 && (
+							<div class="product-attributes">
+								<h3>Характеристики</h3>
+								<table>
+									<tbody>
+										{attributes.map((attr) => (
+											<tr>
+												<td class="attr-name">{attr.label || attr.name}</td>
+												<td class="attr-value">{attr.options.join(', ')}</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
 							</div>
 						)}
+					</div>
+				</div>
+
+				<!-- Описание -->
+				{product.description && (
+					<div class="product-description">
+						<h3>Описание</h3>
+						<div class="desc-content" set:html={product.description} />
+					</div>
+				)}
+
+				<!-- Похожие товары -->
+				{related.length > 0 && (
+					<section class="related-products">
+						<h3>Похожие товары</h3>
+						<div class="products-grid">
+							{related.map((p) => <ProductCard product={p} variant="v1" />)}
+						</div>
 					</div>
 
 					<!-- Информация о товаре -->
@@ -372,11 +412,66 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 		color: #c00;
 	}
 
+	.product-buy-wrap {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin: 15px 0 20px;
+	}
+
+	.product-qty-select {
+		display: flex;
+		align-items: center;
+		border: 1px solid #ddd;
+		border-radius: 6px;
+		overflow: hidden;
+		background: #fff;
+		height: 48px;
+	}
+
+	.product-qty-select .qty-btn {
+		background: #f5f5f5;
+		border: none;
+		width: 36px;
+		height: 100%;
+		cursor: pointer;
+		font-size: 16px;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: background 0.15s;
+	}
+
+	.product-qty-select .qty-btn:hover {
+		background: #e0e0e0;
+	}
+
+	.product-qty-input {
+		width: 50px;
+		height: 100%;
+		border: none;
+		text-align: center;
+		font-size: 15px;
+		font-weight: 700;
+		outline: none;
+		appearance: textfield;
+		-moz-appearance: textfield;
+	}
+	.product-qty-input::-webkit-outer-spin-button,
+	.product-qty-input::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+
 	.buy-btn {
-		display: block;
-		width: 100%;
-		max-width: 300px;
-		padding: 14px 30px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex: 1;
+		max-width: 240px;
+		height: 48px;
+		padding: 0 30px;
 		background: var(--color-primary, #ffdd00);
 		color: var(--dark, #333);
 		border: none;
@@ -385,7 +480,6 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 		font-weight: 700;
 		cursor: pointer;
 		transition: background 0.2s, transform 0.1s;
-		margin: 15px 0 20px;
 	}
 
 	.buy-btn:hover:not(:disabled) {

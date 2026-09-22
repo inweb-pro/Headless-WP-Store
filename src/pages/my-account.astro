@@ -1,0 +1,600 @@
+---
+import Layout from '../components/Layout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { fetchGraphQL } from '../lib/graphql';
+
+const authToken = Astro.cookies.get('auth_token')?.value;
+
+let customer: any = null;
+let fetchError = false;
+
+if (authToken) {
+	try {
+		const data = await fetchGraphQL<{ customer: any }>(
+			`query GetCustomerData {
+				customer {
+					databaseId
+					displayName
+					email
+					orders(first: 20) {
+						nodes {
+							databaseId
+							orderNumber
+							date
+							status
+							total
+							lineItems {
+								nodes {
+									product {
+										node {
+											name
+											uri
+										}
+									}
+									quantity
+									total
+								}
+							}
+						}
+					}
+				}
+			}`,
+			{},
+			{ authToken },
+		);
+		customer = data.customer;
+	} catch (e) {
+		console.warn('[My Account] Токен недействителен или сессия истекла:', (e as Error).message);
+		fetchError = true;
+	}
+}
+
+// Статусы заказа на русском
+const statusLabels: Record<string, { label: string; color: string }> = {
+	PENDING: { label: 'Ожидает оплаты', color: '#f57c00' },
+	PROCESSING: { label: 'В обработке', color: '#1976d2' },
+	ON_HOLD: { label: 'На удержании', color: '#7b1fa2' },
+	COMPLETED: { label: 'Выполнен', color: '#388e3c' },
+	CANCELLED: { label: 'Отменен', color: '#d32f2f' },
+	REFUNDED: { label: 'Возврат', color: '#555' },
+	FAILED: { label: 'Не удался', color: '#d32f2f' },
+};
+---
+
+<Layout title="Личный кабинет">
+	<div class="container account-container">
+		<Breadcrumbs items={[{ name: "Личный кабинет", uri: "/my-account" }]} />
+
+		<h1 class="page-title">Личный кабинет</h1>
+
+		{customer ? (
+			/* АВТОРИЗОВАННЫЙ ПОЛЬЗОВАТЕЛЬ */
+			<div class="account-dashboard">
+				<div class="account-user-card">
+					<div class="user-avatar">
+						<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+							<circle cx="12" cy="7" r="4"></circle>
+						</svg>
+					</div>
+					<div class="user-details">
+						<h2 class="user-name">{customer.displayName || customer.email}</h2>
+						<p class="user-email">{customer.email}</p>
+					</div>
+					<button type="button" id="btn-logout" class="btn-logout">
+						Выйти
+					</button>
+				</div>
+
+				<section class="account-orders-section">
+					<h2 class="section-title">История заказов</h2>
+
+					{(!customer.orders?.nodes || customer.orders.nodes.length === 0) ? (
+						<div class="no-orders-box">
+							<p>У вас пока нет оформленных заказов.</p>
+							<a href="/shop" class="btn-shop">Перейти в каталог</a>
+						</div>
+					) : (
+						<div class="orders-list">
+							{customer.orders.nodes.map((order: any) => {
+								const st = statusLabels[order.status] || { label: order.status, color: '#666' };
+								const formattedDate = order.date ? new Date(order.date).toLocaleDateString('ru-RU', {
+									day: 'numeric',
+									month: 'long',
+									year: 'numeric'
+								}) : '';
+
+								return (
+									<div class="order-card">
+										<div class="order-card-header">
+											<div>
+												<span class="order-number">Заказ #{order.orderNumber || order.databaseId}</span>
+												<span class="order-date">от {formattedDate}</span>
+											</div>
+											<span class="order-status-badge" style={`background-color: ${st.color}18; color: ${st.color}; border: 1px solid ${st.color}40;`}>
+												{st.label}
+											</span>
+										</div>
+
+										<div class="order-card-items">
+											{order.lineItems?.nodes?.map((li: any) => (
+												<div class="order-item-row">
+													<a href={li.product?.node?.uri || '#'} class="order-item-name">
+														{li.product?.node?.name || 'Товар'}
+													</a>
+													<span class="order-item-qty">{li.quantity} шт.</span>
+													<span class="order-item-total">{li.total}</span>
+												</div>
+											))}
+										</div>
+
+										<div class="order-card-footer">
+											<span>Итого:</span>
+											<strong class="order-final-sum">{order.total}</strong>
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					)}
+				</section>
+			</div>
+		) : (
+			/* НЕАВТОРИЗОВАННЫЙ ПОЛЬЗОВАТЕЛЬ */
+			<div class="auth-wrapper">
+				<div class="auth-tabs">
+					<button type="button" class="auth-tab is-active" data-tab="login">Вход</button>
+					<button type="button" class="auth-tab" data-tab="register">Регистрация</button>
+				</div>
+
+				<div class="auth-card">
+					<!-- Форма входа -->
+					<form id="login-form" class="auth-form is-active">
+						<div class="field-group">
+							<label for="login-user">Email или логин</label>
+							<input type="text" id="login-user" name="username" required placeholder="ivanov@mail.ru" />
+						</div>
+
+						<div class="field-group">
+							<label for="login-pass">Пароль</label>
+							<input type="password" id="login-pass" name="password" required placeholder="••••••••" />
+						</div>
+
+						<div id="login-error" class="form-error" style="display: none;"></div>
+
+						<button type="submit" class="btn-auth-submit">Войти в кабинет</button>
+					</form>
+
+					<!-- Форма регистрации -->
+					<form id="register-form" class="auth-form">
+						<div class="field-group">
+							<label for="reg-email">Ваш Email</label>
+							<input type="email" id="reg-email" name="email" required placeholder="ivanov@mail.ru" />
+						</div>
+
+						<div class="field-group">
+							<label for="reg-name">Ваше имя (необязательно)</label>
+							<input type="text" id="reg-name" name="username" placeholder="Иван Иванов" />
+						</div>
+
+						<div class="field-group">
+							<label for="reg-pass">Придумайте пароль</label>
+							<input type="password" id="reg-pass" name="password" required minlength="6" placeholder="Минимум 6 символов" />
+						</div>
+
+						<div id="reg-error" class="form-error" style="display: none;"></div>
+
+						<button type="submit" class="btn-auth-submit">Зарегистрироваться</button>
+					</form>
+				</div>
+			</div>
+		)}
+	</div>
+</Layout>
+
+<style>
+	.account-container {
+		max-width: 900px;
+		margin: 20px auto 70px;
+		padding: 0 15px;
+	}
+
+	.page-title {
+		font-family: "Play", sans-serif;
+		font-size: 1.8rem;
+		margin: 15px 0 25px;
+		color: #222;
+	}
+
+	/* Карточка профиля */
+	.account-user-card {
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 10px;
+		padding: 20px 24px;
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		margin-bottom: 30px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+	}
+
+	.user-avatar {
+		width: 54px;
+		height: 54px;
+		border-radius: 50%;
+		background: #fdfae6;
+		color: #b89a00;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.user-details {
+		flex: 1;
+	}
+
+	.user-name {
+		font-size: 1.15rem;
+		margin: 0 0 3px;
+		color: #222;
+	}
+
+	.user-email {
+		font-size: 13px;
+		color: #777;
+		margin: 0;
+	}
+
+	.btn-logout {
+		background: #fff;
+		color: #777;
+		border: 1px solid #ddd;
+		padding: 8px 16px;
+		border-radius: 6px;
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.btn-logout:hover {
+		color: #d32f2f;
+		border-color: #d32f2f;
+		background: #fff8f8;
+	}
+
+	/* Список заказов */
+	.section-title {
+		font-family: "Play", sans-serif;
+		font-size: 1.3rem;
+		margin: 0 0 18px;
+		color: #222;
+	}
+
+	.no-orders-box {
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 8px;
+		padding: 40px 20px;
+		text-align: center;
+		color: #777;
+	}
+
+	.btn-shop {
+		display: inline-block;
+		margin-top: 15px;
+		background: var(--color-primary, #ffdd00);
+		color: #1a1a1a;
+		padding: 10px 22px;
+		border-radius: 6px;
+		font-weight: 700;
+		font-size: 13px;
+		text-decoration: none;
+	}
+
+	.orders-list {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.order-card {
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 8px;
+		overflow: hidden;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+	}
+
+	.order-card-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 14px 18px;
+		background: #fafafa;
+		border-bottom: 1px solid #eee;
+		flex-wrap: wrap;
+		gap: 10px;
+	}
+
+	.order-number {
+		font-weight: 700;
+		color: #222;
+		font-size: 14px;
+		margin-right: 8px;
+	}
+
+	.order-date {
+		font-size: 12px;
+		color: #888;
+	}
+
+	.order-status-badge {
+		padding: 4px 10px;
+		border-radius: 20px;
+		font-size: 12px;
+		font-weight: 600;
+	}
+
+	.order-card-items {
+		padding: 14px 18px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.order-item-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 13px;
+		gap: 10px;
+	}
+
+	.order-item-name {
+		flex: 1;
+		color: #333;
+		text-decoration: none;
+	}
+
+	.order-item-name:hover {
+		text-decoration: underline;
+	}
+
+	.order-item-qty {
+		color: #888;
+	}
+
+	.order-item-total {
+		font-weight: 700;
+		color: #333;
+	}
+
+	.order-card-footer {
+		padding: 12px 18px;
+		background: #fdfdfd;
+		border-top: 1px solid #eee;
+		display: flex;
+		justify-content: flex-end;
+		align-items: center;
+		gap: 10px;
+		font-size: 14px;
+	}
+
+	.order-final-sum {
+		font-size: 16px;
+		color: #e53935;
+	}
+
+	/* Табы авторизации */
+	.auth-wrapper {
+		max-width: 440px;
+		margin: 20px auto;
+	}
+
+	.auth-tabs {
+		display: flex;
+		border-bottom: 2px solid #eee;
+		margin-bottom: 20px;
+	}
+
+	.auth-tab {
+		flex: 1;
+		padding: 12px;
+		background: none;
+		border: none;
+		font-size: 15px;
+		font-weight: 700;
+		color: #888;
+		cursor: pointer;
+		position: relative;
+		transition: color 0.15s;
+	}
+
+	.auth-tab.is-active {
+		color: #111;
+	}
+
+	.auth-tab.is-active::after {
+		content: "";
+		position: absolute;
+		bottom: -2px;
+		left: 0;
+		right: 0;
+		height: 3px;
+		background: var(--color-primary, #ffdd00);
+	}
+
+	.auth-card {
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 8px;
+		padding: 24px;
+		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+	}
+
+	.auth-form {
+		display: none;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.auth-form.is-active {
+		display: flex;
+	}
+
+	.field-group {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.field-group label {
+		font-size: 13px;
+		font-weight: 600;
+		color: #444;
+	}
+
+	.field-group input {
+		padding: 11px 14px;
+		border: 1px solid #ddd;
+		border-radius: 6px;
+		font-size: 14px;
+		outline: none;
+		transition: border-color 0.2s;
+	}
+
+	.field-group input:focus {
+		border-color: var(--color-primary, #ffdd00);
+	}
+
+	.btn-auth-submit {
+		background: var(--color-primary, #ffdd00);
+		color: #1a1a1a;
+		border: none;
+		border-radius: 6px;
+		padding: 13px;
+		font-size: 14px;
+		font-weight: 700;
+		text-transform: uppercase;
+		cursor: pointer;
+		margin-top: 6px;
+		transition: background 0.15s;
+	}
+
+	.btn-auth-submit:hover {
+		background: #e6c700;
+	}
+
+	.form-error {
+		background: #ffebee;
+		color: #c62828;
+		border: 1px solid #ffcdd2;
+		border-radius: 6px;
+		padding: 8px 12px;
+		font-size: 13px;
+	}
+</style>
+
+<script>
+	// Переключение табов Вход / Регистрация
+	const tabs = document.querySelectorAll('.auth-tab');
+	const loginForm = document.getElementById('login-form') as HTMLFormElement;
+	const registerForm = document.getElementById('register-form') as HTMLFormElement;
+
+	tabs.forEach((tab) => {
+		tab.addEventListener('click', () => {
+			const target = tab.getAttribute('data-tab');
+			tabs.forEach((t) => t.classList.remove('is-active'));
+			tab.classList.add('is-active');
+
+			if (target === 'login') {
+				loginForm?.classList.add('is-active');
+				registerForm?.classList.remove('is-active');
+			} else {
+				registerForm?.classList.add('is-active');
+				loginForm?.classList.remove('is-active');
+			}
+		});
+	});
+
+	// Обработка Входа
+	loginForm?.addEventListener('submit', async (e) => {
+		e.preventDefault();
+		const errEl = document.getElementById('login-error');
+		if (errEl) errEl.style.display = 'none';
+
+		const formData = new FormData(loginForm);
+		const username = formData.get('username');
+		const password = formData.get('password');
+
+		try {
+			const res = await fetch('/api/auth/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username, password }),
+			});
+			const data = await res.json();
+			if (data.success) {
+				window.location.reload();
+			} else {
+				if (errEl) {
+					errEl.textContent = data.error || 'Ошибка входа';
+					errEl.style.display = 'block';
+				}
+			}
+		} catch (err) {
+			if (errEl) {
+				errEl.textContent = 'Ошибка сети. Попробуйте еще раз.';
+				errEl.style.display = 'block';
+			}
+		}
+	});
+
+	// Обработка Регистрации
+	registerForm?.addEventListener('submit', async (e) => {
+		e.preventDefault();
+		const errEl = document.getElementById('reg-error');
+		if (errEl) errEl.style.display = 'none';
+
+		const formData = new FormData(registerForm);
+		const email = formData.get('email');
+		const username = formData.get('username');
+		const password = formData.get('password');
+
+		try {
+			const res = await fetch('/api/auth/register', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email, username, password }),
+			});
+			const data = await res.json();
+			if (data.success) {
+				window.location.reload();
+			} else {
+				if (errEl) {
+					errEl.textContent = data.error || 'Ошибка регистрации';
+					errEl.style.display = 'block';
+				}
+			}
+		} catch (err) {
+			if (errEl) {
+				errEl.textContent = 'Ошибка сети. Попробуйте еще раз.';
+				errEl.style.display = 'block';
+			}
+		}
+	});
+
+	// Выход
+	const logoutBtn = document.getElementById('btn-logout');
+	logoutBtn?.addEventListener('click', async () => {
+		try {
+			await fetch('/api/auth/logout', { method: 'POST' });
+			window.location.reload();
+		} catch (e) {
+			console.error('Logout error:', e);
+		}
+	});
+</script>
