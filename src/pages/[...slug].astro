@@ -47,6 +47,14 @@ if (!node) return Astro.redirect("/404");
 
 const isCategory = node.__typename === "ProductCategory";
 
+// Если товар закончился / не в наличии — полностью скрываем со страниц сайта (404)
+if (!isCategory) {
+	const product = node as ProductFull;
+	if (product.stockStatus !== 'IN_STOCK') {
+		return Astro.redirect('/404');
+	}
+}
+
 // --- Хлебные крошки ---
 // Строим из иерархии категорий (марка → модель → товар)
 let breadcrumbItems: Array<{ name: string; uri: string }> = [];
@@ -126,7 +134,7 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 			<!-- Страница категории (марка или модель мотоцикла) -->
 			<section class="category-view">
 				<h1>
-					{node.name} ({(node as any).count || 0})
+					{node.name} ({((node as any).products?.nodes || []).length})
 				</h1>
 				<div id="products-grid" class="products-grid">
 					{(node as any).products?.nodes.map((p: any) => (
@@ -156,65 +164,25 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 								loading="eager"
 							/>
 						</div>
-
-						<div class="product-info">
-							<h1>{node.name}</h1>
-							<div class="price-box" set:html={node.price} />
-							<button class="buy-btn">В КОРЗИНУ</button>
-
-							{node.description && (
-								<div class="description">
-									<h3>Описание:</h3>
-									<div class="desc-content" set:html={node.description} />
-								</div>
-							)}
-						</p>
-
-						<div class="product-buy-wrap">
-							<div class="product-qty-select">
-								<button type="button" class="qty-btn" onclick="const i=this.nextElementSibling; if(parseInt(i.value)>1) i.value=parseInt(i.value)-1;">−</button>
-								<input type="number" class="product-qty-input" data-product-quantity value="1" min="1" max={product.stockQuantity || 99} />
-								<button type="button" class="qty-btn" onclick="const i=this.previousElementSibling; i.value=parseInt(i.value)+1;">+</button>
-							</div>
-							<button class="buy-btn" data-add-to-cart={product.databaseId} disabled={product.stockStatus !== 'IN_STOCK'}>
-								В КОРЗИНУ
-							</button>
-						</div>
-
-						<!-- Атрибуты товара (если есть помимо категорий) -->
-						{attributes.length > 0 && (
-							<div class="product-attributes">
-								<h3>Характеристики</h3>
-								<table>
-									<tbody>
-										{attributes.map((attr) => (
-											<tr>
-												<td class="attr-name">{attr.label || attr.name}</td>
-												<td class="attr-value">{attr.options.join(', ')}</td>
-											</tr>
-										))}
-									</tbody>
-								</table>
+						{allImages.length > 1 && (
+							<div class="gallery-thumbs">
+								{allImages.map((img, i) => (
+									<button
+										class={`thumb ${i === 0 ? 'active' : ''}`}
+										data-src={img.sourceUrl}
+										data-alt={img.altText || product.name}
+									>
+										<img
+											src={img.sourceUrl}
+											alt={img.altText || `${product.name} - фото ${i + 1}`}
+											width={80}
+											height={80}
+											loading="lazy"
+										/>
+									</button>
+								))}
 							</div>
 						)}
-					</div>
-				</div>
-
-				<!-- Описание -->
-				{product.description && (
-					<div class="product-description">
-						<h3>Описание</h3>
-						<div class="desc-content" set:html={product.description} />
-					</div>
-				)}
-
-				<!-- Похожие товары -->
-				{related.length > 0 && (
-					<section class="related-products">
-						<h3>Похожие товары</h3>
-						<div class="products-grid">
-							{related.map((p) => <ProductCard product={p} variant="v1" />)}
-						</div>
 					</div>
 
 					<!-- Информация о товаре -->
@@ -251,9 +219,11 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 							)}
 						</p>
 
-						<button class="buy-btn" disabled={product.stockStatus !== 'IN_STOCK'}>
-							В КОРЗИНУ
-						</button>
+						<div class="product-buy-wrap">
+							<button class="buy-btn" data-add-to-cart={product.databaseId} disabled={product.stockStatus !== 'IN_STOCK'}>
+								В КОРЗИНУ
+							</button>
+						</div>
 
 						<!-- Атрибуты товара (если есть помимо категорий) -->
 						{attributes.length > 0 && (
@@ -490,6 +460,20 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 	.buy-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	.buy-btn.is-in-cart {
+		background: #e2e2e2 !important;
+		color: #555 !important;
+		cursor: not-allowed !important;
+		border: 1px solid #d0d0d0 !important;
+		transform: none !important;
+		box-shadow: none !important;
+	}
+
+	.buy-btn.is-in-cart:hover {
+		background: #d8d8d8 !important;
+		transform: none !important;
 	}
 
 	/* Атрибуты */

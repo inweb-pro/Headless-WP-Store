@@ -3,6 +3,20 @@
  * Взаимодействует с /api/cart и обновляет интерфейс (бейдж, мини-корзину, страницу корзины).
  */
 
+/**
+ * Очистка форматирования цены (удаление &nbsp;, неразрывных пробелов, нормализация валюты)
+ */
+export function cleanPrice(price) {
+	if (!price) return '';
+	return String(price)
+		.replace(/&nbsp;/gi, ' ')
+		.replace(/\u00a0/g, ' ')
+		.replace(/&#8381;/gi, '₽')
+		.replace(/&times;/gi, '×')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
 export const cart = {
 	state: null,
 	isLoading: false,
@@ -26,15 +40,34 @@ export const cart = {
 	},
 
 	/**
+	 * Проверить, находится ли товар уже в корзине
+	 */
+	isItemInCart(productId) {
+		const items = this.state?.contents?.nodes || [];
+		const targetId = parseInt(productId, 10);
+		return items.some((item) => {
+			const id = item.product?.node?.databaseId;
+			return id === targetId;
+		});
+	},
+
+	/**
 	 * Добавить товар в корзину
 	 */
 	async add(productId, quantity = 1) {
+		const targetId = parseInt(productId, 10);
+		// Если товар уже в корзине, открываем корзину без повторного запроса
+		if (this.isItemInCart(targetId)) {
+			this.openOffcanvasCart();
+			return this.state;
+		}
+
 		this.isLoading = true;
 		try {
 			const res = await fetch('/api/cart', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ productId, quantity }),
+				body: JSON.stringify({ productId: targetId, quantity }),
 			});
 			const data = await res.json();
 			if (data.success && data.cart) {
@@ -44,12 +77,14 @@ export const cart = {
 				window.dispatchEvent(new CustomEvent('cart:updated', { detail: data.cart }));
 				return data.cart;
 			} else {
-				alert(data.error || 'Не удалось добавить товар в корзину');
+				console.warn('[Cart] Ошибка добавления:', data.error);
+				this.openOffcanvasCart();
 			}
 		} catch (e) {
 			console.error('[Cart] Ошибка добавления:', e);
 		} finally {
 			this.isLoading = false;
+			this.updateButtonStates();
 		}
 		return null;
 	},
@@ -123,7 +158,7 @@ export const cart = {
 	updateUI() {
 		const cart = this.state;
 		const count = cart?.contents?.itemCount || 0;
-		const total = cart?.total || '0 ₽';
+		const total = cleanPrice(cart?.total || '0 ₽');
 
 		// Обновляем бейджи количества
 		document.querySelectorAll('.cart-total .badge, [data-cart-badge]').forEach((badge) => {
@@ -133,11 +168,47 @@ export const cart = {
 
 		// Обновляем сумму
 		document.querySelectorAll('.cart-total .price, [data-cart-price]').forEach((priceEl) => {
-			priceEl.innerHTML = count > 0 ? total : '0 ₽';
+			priceEl.textContent = count > 0 ? total : '0 ₽';
 		});
+
+		// Обновляем состояние кнопок добавления в корзину
+		this.updateButtonStates();
 
 		// Рендерим мини-корзину в offcanvas
 		this.renderMiniCart();
+	},
+
+	/**
+	 * Обновить состояние кнопок [data-add-to-cart] на странице
+	 */
+	updateButtonStates() {
+		const items = this.state?.contents?.nodes || [];
+		const cartProductIds = new Set(
+			items.map((item) => item.product?.node?.databaseId).filter(Boolean)
+		);
+
+		document.querySelectorAll('[data-add-to-cart]').forEach((btn) => {
+			const rawId = btn.getAttribute('data-add-to-cart');
+			const productId = parseInt(rawId, 10);
+
+			if (cartProductIds.has(productId)) {
+				btn.classList.add('is-in-cart');
+				const textEl = btn.querySelector('.btn-text');
+				if (textEl) {
+					textEl.textContent = 'В КОРЗИНЕ';
+				} else {
+					btn.textContent = 'В КОРЗИНЕ';
+				}
+			} else {
+				btn.classList.remove('is-in-cart');
+				const textEl = btn.querySelector('.btn-text');
+				if (textEl) {
+					textEl.textContent = 'В корзину';
+				} else {
+					btn.textContent = 'В КОРЗИНУ';
+				}
+			}
+		});
 	},
 
 	/**
@@ -171,7 +242,7 @@ export const cart = {
 		let itemsHtml = items.map((item) => {
 			const prod = item.product?.node;
 			const imageSrc = prod?.image?.sourceUrl || '/placeholder.png';
-			const price = item.total || prod?.price || '';
+			const price = cleanPrice(item.total || prod?.price || '');
 
 			return `
 				<div class="mini-cart-item" data-cart-key="${item.key}">
@@ -182,12 +253,8 @@ export const cart = {
 						<a href="${prod?.uri || '#'}" class="mini-cart-item-title">${prod?.name || 'Товар'}</a>
 						<div class="mini-cart-item-price">${price}</div>
 						<div class="mini-cart-item-actions">
-							<div class="qty-control">
-								<button type="button" class="qty-btn" data-cart-dec="${item.key}" data-qty="${item.quantity}">−</button>
-								<span class="qty-val">${item.quantity}</span>
-								<button type="button" class="qty-btn" data-cart-inc="${item.key}" data-qty="${item.quantity}">+</button>
-							</div>
-							<button type="button" class="mini-cart-remove" data-cart-remove="${item.key}" title="Удалить">
+							<span class="mini-cart-item-qty">1 шт.</span>
+							<button type="button" class="mini-cart-remove" data-cart-remove="${item.key}" title="Удалить из корзины">
 								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 									<line x1="18" y1="6" x2="6" y2="18"></line>
 									<line x1="6" y1="6" x2="18" y2="18"></line>
@@ -207,7 +274,7 @@ export const cart = {
 				<div class="mini-cart-footer">
 					<div class="mini-cart-subtotal">
 						<span>Подытог:</span>
-						<span class="subtotal-amount">${cart.total}</span>
+						<span class="subtotal-amount">${cleanPrice(cart.total)}</span>
 					</div>
 					<div class="mini-cart-buttons">
 						<a href="/checkout" class="btn-checkout">Оформить заказ</a>
@@ -223,32 +290,32 @@ export const cart = {
  * Инициализация обработчиков событий корзины
  */
 export function initCart() {
-	// 1. Загружаем текущее состояние корзины
-	cart.fetchCart();
+	// 1. Загружаем текущее состояние корзины и обновляем кнопки
+	cart.fetchCart().then(() => {
+		cart.updateButtonStates();
+	});
 
-	// 2. Делегирование кликов по кнопкам добавления в корзину
+	// 2. Делегирование кликов по кнопкам добавления в корзину (все товары уникальны, добавляются по 1 шт.)
 	document.addEventListener('click', (e) => {
 		const target = e.target.closest('[data-add-to-cart]');
 		if (target) {
 			e.preventDefault();
-			const productId = target.getAttribute('data-add-to-cart');
-			let qty = 1;
-
-			// Если есть инпут количества рядом или по селектору
-			const qtyInput = document.querySelector('[data-product-quantity]');
-			if (qtyInput) {
-				qty = parseInt(qtyInput.value, 10) || 1;
-			}
+			const productId = parseInt(target.getAttribute('data-add-to-cart'), 10);
 
 			if (productId) {
-				const originalText = target.innerHTML;
+				// Если товар уже в корзине - просто открываем выезжающую панель
+				if (target.classList.contains('is-in-cart') || cart.isItemInCart(productId)) {
+					cart.openOffcanvasCart();
+					return;
+				}
+
 				target.disabled = true;
 				target.classList.add('loading');
 
-				cart.add(parseInt(productId, 10), qty).finally(() => {
+				cart.add(productId, 1).finally(() => {
 					target.disabled = false;
 					target.classList.remove('loading');
-					target.innerHTML = originalText;
+					cart.updateButtonStates();
 				});
 			}
 			return;
@@ -262,26 +329,6 @@ export function initCart() {
 			if (key) {
 				cart.remove(key);
 			}
-			return;
-		}
-
-		// 4. Увеличение количества
-		const incBtn = e.target.closest('[data-cart-inc]');
-		if (incBtn) {
-			e.preventDefault();
-			const key = incBtn.getAttribute('data-cart-inc');
-			const currentQty = parseInt(incBtn.getAttribute('data-qty'), 10) || 1;
-			cart.updateQuantity(key, currentQty + 1);
-			return;
-		}
-
-		// 5. Уменьшение количества
-		const decBtn = e.target.closest('[data-cart-dec]');
-		if (decBtn) {
-			e.preventDefault();
-			const key = decBtn.getAttribute('data-cart-dec');
-			const currentQty = parseInt(decBtn.getAttribute('data-qty'), 10) || 1;
-			cart.updateQuantity(key, currentQty - 1);
 			return;
 		}
 	});

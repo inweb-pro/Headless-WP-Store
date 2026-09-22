@@ -232,6 +232,37 @@ const price = product.price || "Цена по запросу";
 					transform: translateY(0);
 				} // Иконка встает на место
 			}
+
+			&.is-in-cart {
+				background: #e2e2e2 !important;
+				color: #555 !important;
+				cursor: not-allowed !important;
+				border: 1px solid #d0d0d0 !important;
+
+				.btn-text {
+					transform: none !important;
+					font-size: 12px;
+					color: #555 !important;
+					letter-spacing: 0.5px;
+				}
+
+				.btn-icon {
+					display: none !important;
+				}
+
+				&:hover {
+					background: #d8d8d8 !important;
+					cursor: not-allowed !important;
+
+					.btn-text {
+						transform: none !important;
+					}
+
+					.btn-icon {
+						display: none !important;
+					}
+				}
+			}
 		}
 
 		.wishlist-btn {

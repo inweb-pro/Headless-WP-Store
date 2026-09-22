@@ -2,8 +2,20 @@
 import Layout from '../components/Layout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 
+function cleanPrice(price: string | null | undefined): string {
+	if (!price) return '';
+	return decodeURIComponent(price)
+		.replace(/&nbsp;/gi, ' ')
+		.replace(/\u00a0/g, ' ')
+		.replace(/&#8381;/gi, '₽')
+		.replace(/&times;/gi, '×')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
 const orderNumber = Astro.url.searchParams.get('order') || '';
-const orderTotal = Astro.url.searchParams.get('total') || '';
+const rawTotal = Astro.url.searchParams.get('total') || '';
+const orderTotal = cleanPrice(rawTotal);
 ---
 
 <Layout title="Заказ успешно оформлен">

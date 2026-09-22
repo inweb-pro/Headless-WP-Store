@@ -7,6 +7,7 @@
 
 /** Фрагмент полей товара для списков (карточки в каталоге) */
 const PRODUCT_CARD_FIELDS = `
+	databaseId
 	name
 	uri
 	... on ProductWithPricing {
@@ -22,7 +23,7 @@ const PRODUCT_CARD_FIELDS = `
 /** Получить последние товары (для главной страницы) */
 export const GET_LATEST_PRODUCTS = `
 	query GetLatestProducts($first: Int = 5) {
-		products(first: $first) {
+		products(where: { stockStatus: IN_STOCK }, first: $first) {
 			nodes {
 				${PRODUCT_CARD_FIELDS}
 			}
@@ -33,7 +34,7 @@ export const GET_LATEST_PRODUCTS = `
 /** Получить товары каталога с пагинацией */
 export const GET_PRODUCTS = `
 	query GetProducts($first: Int = 12, $after: String) {
-		products(first: $first, after: $after) {
+		products(where: { stockStatus: IN_STOCK }, first: $first, after: $after) {
 			found
 			pageInfo {
 				hasNextPage
@@ -63,7 +64,7 @@ export const GET_NODE = `
 			ancestors {
 				nodes { name, uri }
 			}
-			products(first: 12) {
+			products(where: { stockStatus: IN_STOCK }, first: 12) {
 				pageInfo { hasNextPage, endCursor }
 				nodes {
 					${PRODUCT_CARD_FIELDS}
@@ -154,7 +155,7 @@ export const GET_NODE = `
 /** Загрузить ещё товары (общий каталог) */
 export const LOAD_MORE_PRODUCTS = `
 	query LoadMore($first: Int = 12, $after: String) {
-		products(first: $first, after: $after) {
+		products(where: { stockStatus: IN_STOCK }, first: $first, after: $after) {
 			pageInfo { hasNextPage, endCursor }
 			nodes {
 				${PRODUCT_CARD_FIELDS}
@@ -167,7 +168,7 @@ export const LOAD_MORE_PRODUCTS = `
 export const LOAD_MORE_CATEGORY_PRODUCTS = `
 	query LoadMoreCat($id: ID!, $first: Int = 12, $after: String) {
 		productCategory(id: $id, idType: SLUG) {
-			products(first: $first, after: $after) {
+			products(where: { stockStatus: IN_STOCK }, first: $first, after: $after) {
 				pageInfo { hasNextPage, endCursor }
 				nodes {
 					${PRODUCT_CARD_FIELDS}

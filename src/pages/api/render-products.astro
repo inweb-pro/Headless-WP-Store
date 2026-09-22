@@ -17,7 +17,22 @@ const { searchParams } = new URL(Astro.request.url);
 const cursor = searchParams.get("cursor");
 const slug = searchParams.get("slug");
 
-let productsData: any = null;
+// Формируем GraphQL запрос в зависимости от контекста (категория или общий список)
+const query = slug
+	? `query LoadMoreCat($id: ID!, $after: String) {
+      productCategory(id: $id, idType: SLUG) {
+        products(where: { stockStatus: IN_STOCK }, first: 12, after: $after) {
+          pageInfo { hasNextPage, endCursor }
+          nodes { databaseId, name, uri, ... on ProductWithPricing { price }, image { sourceUrl } }
+        }
+      }
+    }`
+	: `query LoadMore($after: String) {
+      products(where: { stockStatus: IN_STOCK }, first: 12, after: $after) {
+        pageInfo { hasNextPage, endCursor }
+        nodes { databaseId, name, uri, ... on ProductWithPricing { price }, image { sourceUrl } }
+      }
+    }`;
 
 try {
 	if (slug) {

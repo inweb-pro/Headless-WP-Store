@@ -6,6 +6,7 @@
 
 /** Фрагмент полей товара для результатов поиска */
 const PRODUCT_CARD_FIELDS = `
+	databaseId
 	name
 	uri
 	... on ProductWithPricing {
@@ -20,7 +21,7 @@ const PRODUCT_CARD_FIELDS = `
 /** Поиск товаров по строке */
 export const SEARCH_PRODUCTS = `
 	query SearchProducts($search: String!, $first: Int = 20) {
-		products(where: { search: $search }, first: $first) {
+		products(where: { search: $search, stockStatus: IN_STOCK }, first: $first) {
 			found
 			pageInfo {
 				hasNextPage

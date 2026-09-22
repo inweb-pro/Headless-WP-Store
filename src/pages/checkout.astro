@@ -1,6 +1,27 @@
 ---
 import Layout from '../components/Layout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
+
+let currentUser: any = null;
+const authToken = Astro.cookies.get('auth_token')?.value;
+
+if (authToken) {
+	try {
+		const meRes = await fetch('http://api-motopuzzle.local/wp-json/motopuzzle/v1/me', {
+			headers: {
+				Authorization: `Bearer ${authToken}`,
+			},
+		});
+		if (meRes.ok) {
+			const meData = await meRes.json();
+			if (meData.authenticated && meData.user) {
+				currentUser = meData.user;
+			}
+		}
+	} catch (e) {
+		console.error('[Checkout Page Auth Error]', e);
+	}
+}
 ---
 
 <Layout title="Оформление заказа">
@@ -20,6 +41,18 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 		</div>
 
 		<form id="checkout-form" class="checkout-form" style="display: none;">
+			{currentUser && (
+				<div class="auth-notice-banner">
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="2">
+						<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+						<circle cx="12" cy="7" r="4"></circle>
+					</svg>
+					<div>
+						Вы авторизованы как <strong>{currentUser.name || currentUser.email}</strong>. Ваши контактные данные и адрес доставки заполнены автоматически.
+					</div>
+				</div>
+			)}
+
 			<div class="checkout-grid">
 				<!-- Левая колонка: Способ доставки и данные покупателя -->
 				<div class="checkout-left">
@@ -55,17 +88,17 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 						<div class="form-fields">
 							<div class="field-group">
 								<label for="field-name">Ф.И.О. получателя <span class="req">*</span></label>
-								<input type="text" id="field-name" name="name" placeholder="Иванов Иван Иванович" required />
+								<input type="text" id="field-name" name="name" value={currentUser?.name || ''} placeholder="Иванов Иван Иванович" required />
 							</div>
 
 							<div class="fields-row">
 								<div class="field-group">
 									<label for="field-phone">Телефон <span class="req">*</span></label>
-									<input type="tel" id="field-phone" name="phone" placeholder="+7 (999) 000-00-00" required />
+									<input type="tel" id="field-phone" name="phone" value={currentUser?.phone || ''} placeholder="+7 (999) 000-00-00" required />
 								</div>
 								<div class="field-group">
 									<label for="field-email">Email <span class="req">*</span></label>
-									<input type="email" id="field-email" name="email" placeholder="example@mail.ru" required />
+									<input type="email" id="field-email" name="email" value={currentUser?.email || ''} placeholder="example@mail.ru" required />
 								</div>
 							</div>
 						</div>
@@ -79,20 +112,20 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 						<div class="form-fields">
 							<div class="field-group">
 								<label for="field-city">Город назначения <span class="req">*</span></label>
-								<input type="text" id="field-city" name="city" placeholder="Например: Москва, Краснодар, Казань" required />
+								<input type="text" id="field-city" name="city" value={currentUser?.city || ''} placeholder="Например: Москва, Краснодар, Казань" required />
 							</div>
 
 							<div class="field-group">
 								<label for="field-passport">
 									Серия и номер паспорта <span class="req">*</span>
 								</label>
-								<input type="text" id="field-passport" name="passport" placeholder="4000 123456" required />
+								<input type="text" id="field-passport" name="passport" value={currentUser?.passport || ''} placeholder="4000 123456" required />
 								<small class="field-hint">Требуется транспортными компаниями (СДЭК, ПЭК, Деловые Линии) для выдачи заказа</small>
 							</div>
 
 							<div class="field-group">
 								<label for="field-address">Адрес доставки (улица, дом, кв.) или адрес ПВЗ <span class="req">*</span></label>
-								<input type="text" id="field-address" name="address" placeholder="ул. Ленина, д. 10, кв. 5 или адрес пункта выдачи" required />
+								<input type="text" id="field-address" name="address" value={currentUser?.address || ''} placeholder="ул. Ленина, д. 10, кв. 5 или адрес пункта выдачи" required />
 							</div>
 						</div>
 					</div>
@@ -103,7 +136,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 							<span class="step-num">4</span> Способ оплаты
 						</h2>
 						<div class="payment-methods-group">
-							<label class="method-card is-selected">
+							<label class="method-card is-selected" id="payment-card-bacs">
 								<input type="radio" name="paymentMethod" value="bacs" checked />
 								<div class="method-info">
 									<div class="method-title">Банковской картой</div>
@@ -111,7 +144,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 								</div>
 							</label>
 
-							<label class="method-card">
+							<label class="method-card" id="payment-card-cod" style="display: none;">
 								<input type="radio" name="paymentMethod" value="cod" />
 								<div class="method-info">
 									<div class="method-title">Наличными / При получении</div>
@@ -223,6 +256,24 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 		border-radius: 8px;
 		padding: 24px;
 		margin-bottom: 20px;
+	}
+
+	.auth-notice-banner {
+		background: #e8f5e9;
+		color: #1b5e20;
+		border: 1px solid #c8e6c9;
+		border-radius: 8px;
+		padding: 14px 18px;
+		margin-bottom: 20px;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		font-size: 14px;
+		line-height: 1.4;
+	}
+
+	.auth-notice-banner svg {
+		flex-shrink: 0;
 	}
 
 	.block-title {
@@ -499,7 +550,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 </style>
 
 <script>
-	import { cart } from '../scripts/cart.js';
+	import { cart, cleanPrice } from '../scripts/cart.js';
 
 	const loadingEl = document.getElementById('checkout-loading');
 	const emptyEl = document.getElementById('checkout-empty');
@@ -512,27 +563,44 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 	const errorBanner = document.getElementById('checkout-error-msg');
 	const submitBtn = document.getElementById('submit-order-btn') as HTMLButtonElement;
 
-	// Динамическое скрытие/показ полей доставки при смене метода доставки
+	// Динамическое скрытие/показ полей доставки и способов оплаты при смене метода доставки
 	function handleShippingMethodChange(method: string) {
-		if (!deliveryBlock) return;
 		const cityInput = document.getElementById('field-city') as HTMLInputElement;
 		const passportInput = document.getElementById('field-passport') as HTMLInputElement;
 		const addressInput = document.getElementById('field-address') as HTMLInputElement;
+		const codCard = document.getElementById('payment-card-cod');
+		const bacsCard = document.getElementById('payment-card-bacs');
+		const bacsRadio = document.querySelector('input[name="paymentMethod"][value="bacs"]') as HTMLInputElement;
 
 		if (method === 'pickup') {
-			// Скрываем блок данных доставки и убираем обязательность
-			deliveryBlock.style.display = 'none';
+			// Самовывоз: скрываем блок данных доставки и убираем обязательность
+			if (deliveryBlock) deliveryBlock.style.display = 'none';
 			if (cityInput) cityInput.required = false;
 			if (passportInput) passportInput.required = false;
 			if (addressInput) addressInput.required = false;
 			if (shippingCostEl) shippingCostEl.textContent = 'Бесплатно';
+
+			// При самовывозе разрешена оплата наличными
+			if (codCard) codCard.style.display = 'flex';
 		} else {
-			// Показываем блок доставки и возвращаем обязательность
-			deliveryBlock.style.display = 'block';
+			// Доставка: показываем блок доставки и возвращаем обязательность
+			if (deliveryBlock) deliveryBlock.style.display = 'block';
 			if (cityInput) cityInput.required = true;
 			if (passportInput) passportInput.required = true;
 			if (addressInput) addressInput.required = true;
 			if (shippingCostEl) shippingCostEl.textContent = 'По тарифам ТК';
+
+			// При доставке доступна ТОЛЬКО банковская карта (скрываем наличные)
+			if (codCard) {
+				codCard.style.display = 'none';
+				codCard.classList.remove('is-selected');
+			}
+			if (bacsRadio) {
+				bacsRadio.checked = true;
+			}
+			if (bacsCard) {
+				bacsCard.classList.add('is-selected');
+			}
 		}
 	}
 
@@ -566,20 +634,24 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 					<img src="${img}" alt="" class="summary-item-img" />
 					<div class="summary-item-details">
 						<div class="summary-item-name">${prod?.name || 'Товар'}</div>
-						<div class="summary-item-sub">${item.quantity} шт. × ${prod?.price || ''}</div>
+						<div class="summary-item-sub">${item.quantity} шт. × ${cleanPrice(prod?.price || '')}</div>
 					</div>
-					<div class="summary-item-total">${item.total || ''}</div>
+					<div class="summary-item-total">${cleanPrice(item.total || '')}</div>
 				</div>
 			`;
 		}).join('');
 
-		if (subtotalEl) subtotalEl.textContent = cartData.total;
-		if (totalSumEl) totalSumEl.textContent = cartData.total;
+		const totalFormatted = cleanPrice(cartData.total);
+		if (subtotalEl) subtotalEl.textContent = totalFormatted;
+		if (totalSumEl) totalSumEl.textContent = totalFormatted;
 	}
 
 	async function initCheckout() {
 		setupRadioCardHighlight('shippingMethod');
 		setupRadioCardHighlight('paymentMethod');
+
+		// Инициализируем начальное состояние (доставка выбрана по умолчанию)
+		handleShippingMethodChange('delivery');
 
 		const cartData = await cart.fetchCart();
 		if (loadingEl) loadingEl.style.display = 'none';
@@ -626,14 +698,14 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 				});
 				const data = await res.json();
 
-				if (data.success && (data.orderNumber || data.orderId)) {
+				if (data.success) {
 					// Очищаем локальное состояние корзины
 					cart.state = null;
 					cart.updateUI();
 
 					// Перенаправляем на страницу успеха
-					const num = data.orderNumber || data.orderId;
-					const total = encodeURIComponent(data.total || '');
+					const num = data.orderNumber || data.orderId || '';
+					const total = encodeURIComponent(cleanPrice(data.total || totalSumEl?.textContent || ''));
 					window.location.href = `/order-received?order=${num}&total=${total}`;
 				} else {
 					if (errorBanner) {

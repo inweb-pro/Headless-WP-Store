@@ -135,3 +135,67 @@ export async function fetchGraphQL<T = any>(
 		);
 	}
 }
+
+/**
+ * Выполнить GraphQL-запрос и вернуть data вместе с обновленным woocommerce-session токеном
+ */
+export async function fetchGraphQLWithSession<T = any>(
+	query: string,
+	variables?: Record<string, any>,
+	options?: FetchOptions,
+): Promise<{ data: T; sessionToken?: string }> {
+	const apiUrl = import.meta.env.WORDPRESS_API_URL;
+
+	if (!apiUrl) {
+		throw new GraphQLError(
+			'WORDPRESS_API_URL не задан в .env.',
+		);
+	}
+
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	};
+
+	if (options?.sessionToken) {
+		headers['woocommerce-session'] = `Session ${options.sessionToken}`;
+	}
+
+	if (options?.authToken) {
+		headers['Authorization'] = `Bearer ${options.authToken}`;
+	}
+
+	const response = await fetch(apiUrl, {
+		method: 'POST',
+		headers,
+		body: JSON.stringify({ query, variables }),
+	});
+
+	if (!response.ok) {
+		throw new GraphQLError(
+			`HTTP ошибка: ${response.status} ${response.statusText}`,
+			undefined,
+			response.status,
+		);
+	}
+
+	const sessionHeader = response.headers.get('woocommerce-session');
+	const json: GraphQLResponse<T> = await response.json();
+
+	if (json.errors && json.errors.length > 0) {
+		const hasValidData = json.data && typeof json.data === 'object' && Object.values(json.data as Record<string, any>).some((v) => v !== null);
+		if (hasValidData) {
+			return { data: json.data, sessionToken: sessionHeader || options?.sessionToken };
+		}
+		const messages = json.errors.map((e) => e.message).join('; ');
+		throw new GraphQLError(`GraphQL ошибка: ${messages}`, json.errors);
+	}
+
+	if (!json.data) {
+		throw new GraphQLError('GraphQL вернул пустой ответ (data = null)');
+	}
+
+	return {
+		data: json.data,
+		sessionToken: sessionHeader || options?.sessionToken,
+	};
+}

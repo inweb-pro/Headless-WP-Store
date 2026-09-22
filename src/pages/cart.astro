@@ -279,7 +279,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 </style>
 
 <script>
-	import { cart } from '../scripts/cart.js';
+	import { cart, cleanPrice } from '../scripts/cart.js';
 
 	function renderCartPage(cartData: any) {
 		const container = document.getElementById('cart-page-content');
@@ -306,8 +306,8 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 		const rowsHtml = items.map((item: any) => {
 			const prod = item.product?.node;
 			const imageSrc = prod?.image?.sourceUrl || '/placeholder.png';
-			const unitPrice = prod?.price || '';
-			const itemTotal = item.total || '';
+			const unitPrice = cleanPrice(prod?.price || '');
+			const itemTotal = cleanPrice(item.total || '');
 
 			return `
 				<tr data-cart-row="${item.key}">
@@ -320,13 +320,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 						</div>
 					</td>
 					<td class="cart-price-cell">${unitPrice}</td>
-					<td>
-						<div class="cart-qty-wrap">
-							<button type="button" class="qty-btn" data-cart-dec="${item.key}" data-qty="${item.quantity}">−</button>
-							<span class="qty-val">${item.quantity}</span>
-							<button type="button" class="qty-btn" data-cart-inc="${item.key}" data-qty="${item.quantity}">+</button>
-						</div>
-					</td>
+					<td class="cart-qty-cell" style="text-align: center; color: #666; font-weight: 500;">1 шт.</td>
 					<td class="cart-total-cell">${itemTotal}</td>
 					<td>
 						<button type="button" class="cart-remove-btn" data-cart-remove="${item.key}" title="Удалить">
@@ -339,6 +333,8 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 				</tr>
 			`;
 		}).join('');
+
+		const totalFormatted = cleanPrice(cartData.total);
 
 		container.innerHTML = `
 			<div class="cart-layout">
@@ -363,11 +359,11 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 					<h3 class="cart-summary-title">Итог заказа</h3>
 					<div class="summary-row">
 						<span>Товары (${cartData.contents.itemCount} шт.):</span>
-						<span>${cartData.total}</span>
+						<span>${totalFormatted}</span>
 					</div>
 					<div class="summary-row total">
 						<span>К оплате:</span>
-						<span class="total-amount">${cartData.total}</span>
+						<span class="total-amount">${totalFormatted}</span>
 					</div>
 					<p class="summary-notice">Стоимость и способ доставки рассчитываются на следующем шаге оформления.</p>
 					<a href="/checkout" class="btn-go-checkout">Оформить заказ</a>
