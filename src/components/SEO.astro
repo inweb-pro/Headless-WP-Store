@@ -1,0 +1,134 @@
+---
+/**
+ * SEO-компонент — мета-теги, Open Graph, JSON-LD.
+ *
+ * Генерирует:
+ * - <title> и <meta description>
+ * - Open Graph теги (og:title, og:image, og:type)
+ * - JSON-LD разметку (Product, BreadcrumbList)
+ *
+ * JSON-LD Product показывает цену и наличие прямо в Яндексе/Google.
+ *
+ * Commit 1.5: SEO — мета-теги, OG, structured data.
+ */
+
+interface Props {
+	/** Заголовок страницы */
+	title: string;
+	/** Мета-описание */
+	description?: string;
+	/** URL изображения для OG */
+	image?: string;
+	/** Тип страницы (website, product, article) */
+	type?: 'website' | 'product' | 'article';
+	/** Канонический URL */
+	canonical?: string;
+	/** Данные товара для JSON-LD Product */
+	product?: {
+		name: string;
+		description?: string;
+		image?: string;
+		sku?: string;
+		price?: string;
+		regularPrice?: string;
+		stockStatus?: string;
+		brand?: string;
+		url?: string;
+	};
+	/** Данные хлебных крошек для JSON-LD BreadcrumbList */
+	breadcrumbs?: Array<{ name: string; uri: string }>;
+}
+
+const {
+	title,
+	description = 'MotoPuzzle — запчасти для мотоциклов. Фары, ручки газа, реле стартера и другие запчасти для Honda, Kawasaki, BMW, Ducati, Suzuki, Yamaha.',
+	image,
+	type = 'website',
+	canonical,
+	product,
+	breadcrumbs,
+} = Astro.props;
+
+const siteUrl = import.meta.env.PUBLIC_SITE_URL || 'http://motopuzzle.local';
+const fullTitle = title === 'Главная'
+	? 'MotoPuzzle — Запчасти для мотоциклов'
+	: `${title} | MotoPuzzle`;
+
+// Извлекаем числовую цену из HTML (например "<span>1&nbsp;500</span>&nbsp;₽" → "1500")
+function extractPrice(htmlPrice?: string): string | null {
+	if (!htmlPrice) return null;
+	const cleaned = htmlPrice.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/[^\d.,]/g, '').replace(',', '.');
+	return cleaned || null;
+}
+
+// JSON-LD: Product (товар)
+const productJsonLd = product ? {
+	'@context': 'https://schema.org',
+	'@type': 'Product',
+	name: product.name,
+	description: product.description?.replace(/<[^>]*>/g, '').slice(0, 500) || undefined,
+	image: product.image || undefined,
+	sku: product.sku || undefined,
+	brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
+	url: product.url ? `${siteUrl}${product.url}` : undefined,
+	offers: {
+		'@type': 'Offer',
+		price: extractPrice(product.price) || undefined,
+		priceCurrency: 'RUB',
+		availability: product.stockStatus === 'IN_STOCK'
+			? 'https://schema.org/InStock'
+			: 'https://schema.org/OutOfStock',
+		seller: {
+			'@type': 'Organization',
+			name: 'MotoPuzzle',
+		},
+	},
+} : null;
+
+// JSON-LD: BreadcrumbList
+const breadcrumbJsonLd = breadcrumbs && breadcrumbs.length > 0 ? {
+	'@context': 'https://schema.org',
+	'@type': 'BreadcrumbList',
+	itemListElement: [
+		{ '@type': 'ListItem', position: 1, name: 'Главная', item: siteUrl },
+		{ '@type': 'ListItem', position: 2, name: 'Каталог', item: `${siteUrl}/shop` },
+		...breadcrumbs.map((item, i) => ({
+			'@type': 'ListItem',
+			position: i + 3,
+			name: item.name,
+			item: item.uri ? `${siteUrl}${item.uri}` : undefined,
+		})),
+	],
+} : null;
+---
+
+<!-- Основные мета-теги -->
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+{canonical && <link rel="canonical" href={canonical} />}
+
+<!-- Open Graph -->
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:type" content={type} />
+{image && <meta property="og:image" content={image} />}
+<meta property="og:site_name" content="MotoPuzzle" />
+<meta property="og:locale" content="ru_RU" />
+
+<!-- OG Product (цена в Яндексе) -->
+{product && extractPrice(product.price) && (
+	<>
+		<meta property="product:price:amount" content={extractPrice(product.price)!} />
+		<meta property="product:price:currency" content="RUB" />
+	</>
+)}
+
+<!-- JSON-LD: Product -->
+{productJsonLd && (
+	<script type="application/ld+json" set:html={JSON.stringify(productJsonLd)} />
+)}
+
+<!-- JSON-LD: BreadcrumbList -->
+{breadcrumbJsonLd && (
+	<script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} />
+)}

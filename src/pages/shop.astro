@@ -1,19 +1,59 @@
 ---
+/**
+ * Каталог товаров — все товары с пагинацией и сортировкой.
+ *
+ * Сортировка через кастомный SortSelect (попап).
+ * URL параметр ?sort=price_asc.
+ */
 import ShopLayout from "../layouts/ShopLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
 import Breadcrumbs from "../components/Breadcrumbs.astro";
 import LoadMore from "../components/LoadMore.astro";
+import SortSelect from "../components/SortSelect.astro";
+import { fetchGraphQL } from "../lib/graphql";
+import type { ProductsResult } from "../lib/types";
 
-const apiUri = import.meta.env.WORDPRESS_API_URL;
-const response = await fetch(apiUri, {
-	method: "POST",
-	headers: { "Content-Type": "application/json" },
-	body: JSON.stringify({
-		query: `query GetShop { products(first: 12) { pageInfo { hasNextPage, endCursor }, found, nodes { name, uri, ... on ProductWithPricing { price }, image { sourceUrl } } } }`,
-	}),
-});
-const { data } = await response.json();
-const products = data?.products;
+// Опции сортировки
+const sortOptions: Record<string, { field: string; order: string; label: string }> = {
+	date_desc: { field: "DATE", order: "DESC", label: "Новые" },
+	price_asc: { field: "PRICE", order: "ASC", label: "Сначала дешёвые" },
+	price_desc: { field: "PRICE", order: "DESC", label: "Сначала дорогие" },
+	name_asc: { field: "SLUG", order: "ASC", label: "По названию А–Я" },
+};
+
+const sortParam = Astro.url.searchParams.get("sort") || "date_desc";
+const currentSort = sortOptions[sortParam] || sortOptions.date_desc;
+
+const GET_PRODUCTS_SORTED = `
+	query GetProducts($first: Int = 12, $after: String, $orderBy: [ProductsOrderbyInput]) {
+		products(first: $first, after: $after, where: { orderby: $orderBy, stockStatus: IN_STOCK }) {
+			found
+			pageInfo { hasNextPage, endCursor }
+			nodes {
+				databaseId
+				name
+				uri
+				... on ProductWithPricing { price, regularPrice }
+				image { sourceUrl, altText }
+			}
+		}
+	}
+`;
+
+let products: ProductsResult['products'] | null = null;
+let error: string | null = null;
+
+try {
+	const data = await fetchGraphQL<ProductsResult>(GET_PRODUCTS_SORTED, {
+		first: 12,
+		orderBy: [{ field: currentSort.field, order: currentSort.order }],
+	});
+	products = data.products;
+} catch (e) {
+	error = (e as Error).message;
+	console.error('[shop] Ошибка загрузки каталога:', error);
+}
+
 const totalCount = products?.found || 0;
 ---
 
@@ -21,15 +61,50 @@ const totalCount = products?.found || 0;
 	<div class="content-wrapper">
 		<Breadcrumbs items={[{ name: "Каталог" }]} />
 		<section class="catalog-view">
-			<h1>Все товары (<span>{totalCount}</span>)</h1>
-			<div id="products-grid" class="products-grid">
-				{products?.nodes.map((p) => <ProductCard product={p} variant="v1" />)}
+			<div class="catalog-header">
+				<h1>Все товары (<span>{totalCount}</span>)</h1>
+				<SortSelect
+					options={sortOptions}
+					currentKey={sortParam}
+					currentLabel={currentSort.label}
+					baseUrl="/shop"
+				/>
 			</div>
-			{
-				products?.pageInfo.hasNextPage && (
-					<LoadMore cursor={products.pageInfo.endCursor} />
-				)
-			}
+
+			{error ? (
+				<p class="error-message">Не удалось загрузить каталог. Попробуйте позже.</p>
+			) : (
+				<>
+					<div id="products-grid" class="products-grid">
+						{products?.nodes.map((p) => <ProductCard product={p} variant="v1" />)}
+					</div>
+					{products?.pageInfo.hasNextPage && (
+						<LoadMore cursor={products.pageInfo.endCursor} />
+					)}
+				</>
+			)}
 		</section>
 	</div>
 </ShopLayout>
+
+<style>
+	.catalog-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 10px;
+		margin-bottom: 15px;
+	}
+
+	.catalog-header h1 {
+		margin: 0;
+	}
+
+	@media (max-width: 540px) {
+		.catalog-header {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+	}
+</style>

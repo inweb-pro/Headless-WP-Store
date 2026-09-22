@@ -10,17 +10,18 @@ const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
 		query: `
       query GetSideBarCategories {
         productCategories(where: { 
-          parent: 0,
-          hideEmpty: true
-         }, first: 100) {
+          parent: 0
+        }, first: 100) {
           nodes {
             name
             uri
+            slug
             count
-            children {
+            children(first: 100) {
               nodes {
                 name
                 uri
+                slug
                 count
               }
             }
@@ -32,7 +33,17 @@ const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
 });
 
 const { data } = await response.json();
-const categories = data?.productCategories?.nodes || [];
+const rawCategories = data?.productCategories?.nodes || [];
+const categories = rawCategories
+	.filter((cat: any) => cat.count > 0 && cat.slug !== 'uncategorized' && cat.name !== 'Uncategorized')
+	.map((cat: any) => ({
+		...cat,
+		children: {
+			nodes: (cat.children?.nodes || []).filter(
+				(sub: any) => sub.count > 0 && sub.slug !== 'uncategorized' && sub.name !== 'Uncategorized'
+			),
+		},
+	}));
 ---
 
 <nav class="sidebar-nav">
@@ -110,15 +121,59 @@ const categories = data?.productCategories?.nodes || [];
 	</div>
 </nav>
 
-<script>
-	// Интерактив на клиенте (позволяет сворачивать/разворачивать вручную)
-	const toggles = document.querySelectorAll(".toggle-btn");
-	toggles.forEach((btn) => {
-		btn.addEventListener("click", () => {
-			const parent = btn.closest(".cat-item");
-			if (parent) {
-				parent.classList.toggle("is-open");
-			}
+<script is:inline>
+	(function () {
+		// 1. Сворачивание / разворачивание категорий
+		document.querySelectorAll(".toggle-btn").forEach(function (btn) {
+			btn.addEventListener("click", function () {
+				var parent = btn.closest(".cat-item");
+				if (parent) {
+					parent.classList.toggle("is-open");
+				}
+			});
 		});
-	});
+
+		// 2. Автоматическая прокрутка активной категории/подкатегории в видимую область сайдбара
+		function scrollActiveCategoryIntoView() {
+			var scrollArea = document.querySelector(".categories-scroll-area");
+			if (!scrollArea) return;
+
+			var activeLink = scrollArea.querySelector(".sub-active, .cat-link.active");
+			if (!activeLink) return;
+
+			var targetItem =
+				activeLink.closest(".sub-cat-item") ||
+				activeLink.closest(".cat-item") ||
+				activeLink;
+			if (!targetItem) return;
+
+			var containerRect = scrollArea.getBoundingClientRect();
+			var itemRect = targetItem.getBoundingClientRect();
+
+			// Проверяем, выходит ли активный элемент за границы видимой области контейнера
+			var isAbove = itemRect.top < containerRect.top;
+			var isBelow = itemRect.bottom > containerRect.bottom;
+
+			if (isAbove || isBelow) {
+				var targetScrollTop =
+					scrollArea.scrollTop +
+					(itemRect.top - containerRect.top) -
+					containerRect.height / 2 +
+					itemRect.height / 2;
+
+				scrollArea.scrollTo({
+					top: Math.max(0, targetScrollTop),
+					behavior: "smooth",
+				});
+			}
+		}
+
+		if (document.readyState === "loading") {
+			document.addEventListener("DOMContentLoaded", function () {
+				setTimeout(scrollActiveCategoryIntoView, 80);
+			});
+		} else {
+			setTimeout(scrollActiveCategoryIntoView, 80);
+		}
+	})();
 </script>

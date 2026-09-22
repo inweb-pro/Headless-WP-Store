@@ -12,7 +12,7 @@
 export const GET_SIDEBAR_CATEGORIES = `
 	query GetSideBarCategories {
 		productCategories(
-			where: { parent: 0, hideEmpty: true }
+			where: { parent: 0 }
 			first: 100
 		) {
 			nodes {
@@ -20,7 +20,7 @@ export const GET_SIDEBAR_CATEGORIES = `
 				slug
 				uri
 				count
-				children {
+				children(first: 100) {
 					nodes {
 						name
 						slug

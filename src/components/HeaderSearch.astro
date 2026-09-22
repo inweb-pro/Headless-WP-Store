@@ -1,21 +1,427 @@
-<div class="search-wrapper">
-	<form class="search-form">
-		<input type="text" placeholder="Поиск запчастей в каталоге ..." />
-		<div class="search-filter">
-			<span>Где искать?</span>
-			<svg
-				width="12"
-				height="12"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg
-			>
+---
+/**
+ * HeaderSearch — поиск в шапке с автозаполнением.
+ *
+ * Функции:
+ * 1. При фокусе — затемняет весь сайт оверлеем (выше всего, включая offcanvas)
+ * 2. «Где искать?» — выпадающий список категорий (марки мотоциклов)
+ * 3. Автозаполнение от 5 символов — запрос к /api/search
+ * 4. Submit → переход на /search?q=...&cat=...
+ * 5. Без JS форма работает как обычный submit
+ */
+import { fetchGraphQL } from "../lib/graphql";
+import { GET_SIDEBAR_CATEGORIES } from "../lib/queries/categories";
+import type { SidebarCategoriesResult, CategoryNode } from "../lib/types";
+
+// Загружаем категории для «Где искать?»
+let categories: CategoryNode[] = [];
+try {
+	const data = await fetchGraphQL<SidebarCategoriesResult>(GET_SIDEBAR_CATEGORIES);
+	categories = (data.productCategories?.nodes || []).filter((c) => c.count > 0);
+} catch (e) {
+	console.error('[HeaderSearch] Ошибка загрузки категорий:', (e as Error).message);
+}
+---
+
+<!-- Оверлей: затемняет весь сайт при фокусе на поиске -->
+<div id="search-overlay" class="search-overlay"></div>
+
+<div class="search-wrapper" id="search-wrapper">
+	<form class="search-form" action="/search" method="GET" id="search-form">
+		<input
+			type="search"
+			name="q"
+			id="search-input"
+			placeholder="Поиск запчастей в каталоге ..."
+			autocomplete="off"
+			required
+			minlength="3"
+		/>
+
+		<!-- Скрытое поле для категории -->
+		<input type="hidden" name="cat" id="search-cat-value" value="" />
+
+		<!-- «Где искать?» — выбор категории -->
+		<div class="search-filter" id="search-filter">
+			<span id="search-filter-label">Где искать?</span>
+			<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<path d="M6 9l6 6 6-6"></path>
+			</svg>
+
+			<!-- Выпадающий список категорий -->
+			<div class="search-filter-dropdown" id="search-filter-dropdown">
+				<button type="button" class="filter-option is-selected" data-slug="" data-label="Где искать?">
+					Все категории
+				</button>
+				{categories.map((cat) => (
+					<button type="button" class="filter-option" data-slug={cat.slug || cat.uri?.replace(/\//g, '')} data-label={cat.name}>
+						{cat.name}
+						<span class="filter-count">{cat.count}</span>
+					</button>
+				))}
+			</div>
 		</div>
-		<button type="button" class="search-btn">
+
+		<button type="submit" class="search-btn">
 			<svg class="nav-icon" width="20" height="20">
 				<use href="/ui-icons.svg#search"></use>
 			</svg>
 		</button>
+
+		<!-- Результаты автозаполнения (внутри формы для правильной ширины) -->
+		<div class="autocomplete-results" id="autocomplete-results"></div>
 	</form>
 </div>
+
+<style>
+	/* ===== Оверлей ===== */
+	.search-overlay {
+		display: none;
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.6);
+		z-index: 1050;
+		opacity: 0;
+		transition: opacity 0.25s ease;
+		backdrop-filter: blur(2px);
+	}
+	.search-overlay.is-active {
+		display: block;
+		opacity: 1;
+	}
+
+	/* ===== Обёртка поиска при фокусе ===== */
+	#search-wrapper {
+		position: relative;
+	}
+	#search-wrapper.is-focused {
+		z-index: 1060;
+	}
+
+	/* Форма = контекст позиционирования для autocomplete */
+	.search-form {
+		position: relative;
+	}
+
+	/* Форма при фокусе: белый фон, скруглённые углы, тень */
+	:global(.desktop-search) #search-wrapper.is-focused .search-form {
+		background: #fff;
+		border-radius: 12px 12px 0 0;
+		border-color: var(--color-primary, #ffdd00);
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+	}
+
+	/* Если нет результатов — полное скругление */
+	:global(.desktop-search) #search-wrapper.is-focused:not(.has-results) .search-form {
+		border-radius: 12px;
+	}
+
+	/* ===== Dropdown «Где искать?» ===== */
+	.search-filter {
+		position: relative;
+	}
+	.search-filter-dropdown {
+		display: none;
+		position: absolute;
+		top: calc(100% + 12px);
+		right: -1px;
+		min-width: 220px;
+		max-height: 350px;
+		overflow-y: auto;
+		background: #fff;
+		border: 1px solid #e0e0e0;
+		border-radius: 12px;
+		box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+		z-index: 1070;
+		padding: 6px 0;
+	}
+	.search-filter-dropdown.is-open {
+		display: block;
+	}
+	.filter-option {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		width: 100%;
+		padding: 10px 16px;
+		background: none;
+		border: none;
+		cursor: pointer;
+		font-size: 13px;
+		color: #333;
+		text-align: left;
+		transition: background 0.15s;
+	}
+	.filter-option:hover {
+		background: #f5f5f5;
+	}
+	.filter-option.is-selected {
+		background: #fffde6;
+		font-weight: 700;
+	}
+	.filter-count {
+		color: #999;
+		font-size: 12px;
+		font-weight: 400;
+	}
+
+	/* ===== Автозаполнение ===== */
+	.autocomplete-results {
+		display: none;
+		position: absolute;
+		top: 100%;
+		left: -2px;
+		right: -2px;
+		background: #fff;
+		border: 2px solid var(--color-primary, #ffdd00);
+		border-top: 1px solid #eee;
+		border-radius: 0 0 12px 12px;
+		box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+		z-index: 1070;
+		max-height: 420px;
+		overflow-y: auto;
+	}
+	.autocomplete-results.is-open {
+		display: block;
+	}
+	.autocomplete-results :global(.ac-item) {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 10px 16px;
+		text-decoration: none;
+		color: #333;
+		border-bottom: 1px solid #f2f2f2;
+		transition: background 0.15s;
+	}
+	.autocomplete-results :global(.ac-item:last-child) {
+		border-bottom: none;
+	}
+	.autocomplete-results :global(.ac-item:hover),
+	.autocomplete-results :global(.ac-item.is-highlighted) {
+		background: #f9f9f9;
+	}
+	.autocomplete-results :global(.ac-img) {
+		width: 48px;
+		height: 48px;
+		object-fit: cover;
+		border-radius: 4px;
+		flex-shrink: 0;
+		background: #f5f5f5;
+	}
+	.autocomplete-results :global(.ac-info) {
+		flex: 1;
+		min-width: 0;
+	}
+	.autocomplete-results :global(.ac-name) {
+		font-size: 13px;
+		line-height: 1.3;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.autocomplete-results :global(.ac-price) {
+		font-size: 14px;
+		font-weight: 700;
+		color: #c00;
+		margin-top: 2px;
+	}
+	.autocomplete-results :global(.ac-footer) {
+		display: block;
+		padding: 12px 16px;
+		text-align: center;
+		color: var(--dark, #333);
+		font-weight: 600;
+		font-size: 13px;
+		text-decoration: none;
+		background: #fafafa;
+		border-top: 1px solid #eee;
+		border-radius: 0 0 12px 12px;
+	}
+	.autocomplete-results :global(.ac-footer:hover) {
+		background: #f2f2f2;
+	}
+	.autocomplete-results :global(.ac-empty) {
+		padding: 20px 16px;
+		text-align: center;
+		color: #888;
+		font-size: 14px;
+	}
+</style>
+
+<script is:inline>
+document.addEventListener('DOMContentLoaded', function() {
+	var overlay = document.getElementById('search-overlay');
+	var wrapper = document.getElementById('search-wrapper');
+	var input = document.getElementById('search-input');
+	var form = document.getElementById('search-form');
+	var filterBtn = document.getElementById('search-filter');
+	var filterDropdown = document.getElementById('search-filter-dropdown');
+	var filterLabel = document.getElementById('search-filter-label');
+	var catInput = document.getElementById('search-cat-value');
+	var acResults = document.getElementById('autocomplete-results');
+
+	if (!overlay || !wrapper || !input || !form || !filterBtn || !filterDropdown || !filterLabel || !catInput || !acResults) {
+		return; // элементы не найдены (мобильная версия и т.д.)
+	}
+
+	var debounceTimer = null;
+	var currentCat = '';
+	var highlightIndex = -1;
+
+	// ===== Фокус / Оверлей =====
+	function activateSearch() {
+		overlay.classList.add('is-active');
+		wrapper.classList.add('is-focused');
+		var panels = document.querySelectorAll('.offcanvas.is-active');
+		for (var i = 0; i < panels.length; i++) {
+			panels[i].classList.remove('is-active');
+		}
+		document.body.classList.add('lock-scroll');
+	}
+
+	function deactivateSearch() {
+		overlay.classList.remove('is-active');
+		wrapper.classList.remove('is-focused');
+		wrapper.classList.remove('has-results');
+		filterDropdown.classList.remove('is-open');
+		acResults.classList.remove('is-open');
+		document.body.classList.remove('lock-scroll');
+		highlightIndex = -1;
+	}
+
+	input.addEventListener('focus', activateSearch);
+
+	overlay.addEventListener('click', function() {
+		deactivateSearch();
+		input.blur();
+	});
+
+	document.addEventListener('keydown', function(e) {
+		if (e.key === 'Escape') {
+			deactivateSearch();
+			input.blur();
+		}
+	});
+
+	// ===== «Где искать?» — dropdown категорий =====
+	filterBtn.addEventListener('click', function(e) {
+		e.stopPropagation();
+		// Активируем оверлей при клике на dropdown
+		activateSearch();
+		filterDropdown.classList.toggle('is-open');
+		acResults.classList.remove('is-open');
+	});
+
+	filterDropdown.addEventListener('click', function(e) {
+		var btn = e.target.closest('.filter-option');
+		if (!btn) return;
+		e.stopPropagation();
+
+		currentCat = btn.dataset.slug || '';
+		catInput.value = currentCat;
+		filterLabel.textContent = btn.dataset.label || 'Где искать?';
+
+		// Подсветка выбранного
+		var opts = filterDropdown.querySelectorAll('.filter-option');
+		for (var i = 0; i < opts.length; i++) opts[i].classList.remove('is-selected');
+		btn.classList.add('is-selected');
+		filterDropdown.classList.remove('is-open');
+
+		// Перезапустить автозаполнение если есть текст
+		if (input.value.trim().length >= 3) {
+			fetchAutocomplete(input.value.trim());
+		}
+
+		input.focus();
+	});
+
+	// ===== Автозаполнение =====
+	input.addEventListener('input', function() {
+		var q = input.value.trim();
+		highlightIndex = -1;
+
+		if (q.length < 3) {
+			acResults.classList.remove('is-open');
+			wrapper.classList.remove('has-results');
+			acResults.innerHTML = '';
+			return;
+		}
+
+		if (debounceTimer) clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(function() { fetchAutocomplete(q); }, 300);
+	});
+
+	function fetchAutocomplete(q) {
+		var catParam = currentCat ? '&cat=' + encodeURIComponent(currentCat) : '';
+		fetch('/api/search?q=' + encodeURIComponent(q) + catParam + '&limit=6')
+			.then(function(res) { return res.json(); })
+			.then(function(data) {
+				if (data.results.length === 0) {
+					acResults.innerHTML = '<div class="ac-empty">Ничего не найдено</div>';
+				} else {
+					var html = '';
+					for (var i = 0; i < data.results.length; i++) {
+						var item = data.results[i];
+						html += '<a href="' + item.uri + '" class="ac-item">';
+						if (item.image) html += '<img class="ac-img" src="' + item.image + '" alt="" loading="lazy" />';
+						html += '<div class="ac-info">';
+						html += '<div class="ac-name">' + item.name + '</div>';
+						if (item.price) html += '<div class="ac-price">' + item.price + '</div>';
+						html += '</div></a>';
+					}
+
+					if (data.found > data.results.length) {
+						html += '<a href="/search?q=' + encodeURIComponent(q) + catParam + '" class="ac-footer">';
+						html += 'Показать все результаты (' + data.found + ')</a>';
+					}
+
+					acResults.innerHTML = html;
+				}
+
+				acResults.classList.add('is-open');
+				wrapper.classList.add('has-results');
+				filterDropdown.classList.remove('is-open');
+			})
+			.catch(function(e) {
+				console.error('Autocomplete error:', e);
+			});
+	}
+
+	// ===== Навигация клавишами =====
+	input.addEventListener('keydown', function(e) {
+		var items = acResults.querySelectorAll('.ac-item');
+		if (!items.length || !acResults.classList.contains('is-open')) return;
+
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			highlightIndex = Math.min(highlightIndex + 1, items.length - 1);
+			updateHighlight(items);
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			highlightIndex = Math.max(highlightIndex - 1, 0);
+			updateHighlight(items);
+		} else if (e.key === 'Enter' && highlightIndex >= 0) {
+			e.preventDefault();
+			items[highlightIndex].click();
+		}
+	});
+
+	function updateHighlight(items) {
+		for (var i = 0; i < items.length; i++) {
+			items[i].classList.toggle('is-highlighted', i === highlightIndex);
+		}
+	}
+
+	// ===== Закрытие при клике вне =====
+	document.addEventListener('click', function(e) {
+		if (!wrapper.contains(e.target)) {
+			filterDropdown.classList.remove('is-open');
+			acResults.classList.remove('is-open');
+			wrapper.classList.remove('has-results');
+		}
+	});
+});
+</script>
+
