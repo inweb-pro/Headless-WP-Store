@@ -11,6 +11,18 @@
 	--scrollbar-width: 0px;
 }
 
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
 /* Остальные стили без изменений */
 body.lock-scroll {
 	overflow: hidden !important;
@@ -41,10 +53,11 @@ body > main {
 .main-footer {
 	flex: 0 0 auto; /* Футер не сжимается и всегда остается внизу */
 	background: #f4f4f4;
-	padding: 40px 0;
-	margin-top: 60px;
+	padding: 5px 0;
+	margin-top: 50px;
 	text-align: center;
-	font-size: 0.9rem;
+	font-size: 0.82rem;
+	color: #727272;
 }
 
 .container {

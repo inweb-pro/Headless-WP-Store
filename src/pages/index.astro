@@ -1,30 +1,28 @@
 ---
+/**
+ * Главная страница — последние поступления.
+ * Commit 1.1: Переведено на GraphQL-клиент с обработкой ошибок.
+ */
 import PageLayout from "../layouts/PageLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
+import { fetchGraphQL } from "../lib/graphql";
+import { GET_LATEST_PRODUCTS } from "../lib/queries/products";
+import type { ProductBase } from "../lib/types";
 
-const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
-	method: "POST",
-	headers: { "Content-Type": "application/json" },
-	body: JSON.stringify({
-		query: `
-      query GetLatestProducts {
-        products(first: 5) {
-          nodes {
-            name
-            uri
-						... on ProductWithPricing {
-							price
-							regularPrice
-						}
-            image { sourceUrl }
-          }
-        }
-      }
-    `,
-	}),
-});
-const { data } = await response.json();
-const latestProducts = data?.products?.nodes || [];
+interface LatestProductsData {
+	products: { nodes: ProductBase[] };
+}
+
+let latestProducts: ProductBase[] = [];
+let error: string | null = null;
+
+try {
+	const data = await fetchGraphQL<LatestProductsData>(GET_LATEST_PRODUCTS, { first: 5 });
+	latestProducts = data.products?.nodes || [];
+} catch (e) {
+	error = (e as Error).message;
+	console.error('[index] Ошибка загрузки товаров:', error);
+}
 ---
 
 <PageLayout title="Главная">
@@ -35,8 +33,12 @@ const latestProducts = data?.products?.nodes || [];
 
 	<section class="featured">
 		<h2>Новые поступления</h2>
-		<div class="products-grid">
-			{latestProducts.map((p) => <ProductCard product={p} variant="v2" />)}
-		</div>
+		{error ? (
+			<p class="error-message">Не удалось загрузить товары. Попробуйте позже.</p>
+		) : (
+			<div class="products-grid">
+				{latestProducts.map((p) => <ProductCard product={p} variant="v1" />)}
+			</div>
+		)}
 	</section>
 </PageLayout>

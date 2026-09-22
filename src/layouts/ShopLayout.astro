@@ -1,11 +1,32 @@
 ---
+/**
+ * ShopLayout — обёртка для страниц магазина (каталог, категории, товар).
+ * Содержит sidebar с навигацией по маркам/моделям.
+ */
 import Layout from "../components/Layout.astro";
 import Sidebar from "../components/Sidebar.astro";
 
-const { title } = Astro.props;
+interface Props {
+	title: string;
+	currentUri?: string;
+	description?: string;
+	image?: string;
+	type?: 'website' | 'product' | 'article';
+	product?: any;
+	breadcrumbs?: Array<{ name: string; uri: string }>;
+}
+
+const { title, currentUri, description, image, type, product, breadcrumbs } = Astro.props;
 ---
 
-<Layout title={title}>
+<Layout
+	title={title}
+	description={description}
+	image={image}
+	type={type}
+	product={product}
+	breadcrumbs={breadcrumbs}
+>
 	<div class="container shop-layout">
 		<aside class="shop-sidebar">
 			<Sidebar />

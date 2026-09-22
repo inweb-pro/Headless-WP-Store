@@ -1,49 +1,48 @@
 ---
-// Эндпоинт возвращает фрагмент HTML
+/**
+ * API-эндпоинт для пагинации «Загрузить ещё».
+ *
+ * Возвращает HTML-фрагмент с карточками товаров (SSR partial).
+ * Параметры: cursor (обязательный), slug (опциональный, для категории).
+ *
+ * Commit 1.1: Переведено на GraphQL-клиент.
+ */
 export const partial = true;
 
 import ProductCard from "../../components/ProductCard.astro";
+import { fetchGraphQL } from "../../lib/graphql";
+import { LOAD_MORE_PRODUCTS, LOAD_MORE_CATEGORY_PRODUCTS } from "../../lib/queries/products";
 
-const apiUri = import.meta.env.WORDPRESS_API_URL;
 const { searchParams } = new URL(Astro.request.url);
 const cursor = searchParams.get("cursor");
 const slug = searchParams.get("slug");
 
-// Формируем GraphQL запрос в зависимости от контекста (категория или общий список)
-const query = slug
-	? `query LoadMoreCat($id: ID!, $after: String) {
-      productCategory(id: $id, idType: SLUG) {
-        products(first: 12, after: $after) {
-          pageInfo { hasNextPage, endCursor }
-          nodes { name, uri, ... on ProductWithPricing { price }, image { sourceUrl } }
-        }
-      }
-    }`
-	: `query LoadMore($after: String) {
-      products(first: 12, after: $after) {
-        pageInfo { hasNextPage, endCursor }
-        nodes { name, uri, ... on ProductWithPricing { price }, image { sourceUrl } }
-      }
-    }`;
+let productsData: any = null;
 
-const variables = slug ? { id: slug, after: cursor } : { after: cursor };
-
-const res = await fetch(apiUri, {
-	method: "POST",
-	headers: { "Content-Type": "application/json" },
-	body: JSON.stringify({ query, variables }),
-});
-
-const { data } = await res.json();
-const productsData = slug ? data.productCategory.products : data.products;
+try {
+	if (slug) {
+		const data = await fetchGraphQL(LOAD_MORE_CATEGORY_PRODUCTS, {
+			id: slug,
+			after: cursor,
+		});
+		productsData = data.productCategory?.products;
+	} else {
+		const data = await fetchGraphQL(LOAD_MORE_PRODUCTS, { after: cursor });
+		productsData = data.products;
+	}
+} catch (e) {
+	console.error('[LoadMore] Ошибка:', (e as Error).message);
+	// Возвращаем пустой фрагмент при ошибке
+	productsData = { nodes: [], pageInfo: { hasNextPage: false, endCursor: '' } };
+}
 ---
 
-{productsData.nodes.map((p) => <ProductCard product={p} variant="v1" />)}
+{productsData?.nodes?.map((p: any) => <ProductCard product={p} variant="v1" />)}
 
 <div
 	id="pagination-metadata"
-	data-next-page={productsData.pageInfo.hasNextPage}
-	data-cursor={productsData.pageInfo.endCursor}
+	data-next-page={productsData?.pageInfo?.hasNextPage}
+	data-cursor={productsData?.pageInfo?.endCursor}
 	style="display: none;"
 >
 </div>

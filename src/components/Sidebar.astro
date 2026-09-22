@@ -1,41 +1,60 @@
 ---
+/**
+ * Sidebar — навигация по маркам и моделям мотоциклов.
+ *
+ * Структура категорий:
+ *   Honda (16)         ← родительская категория (марка)
+ *   ├── CBR-1100 (3)   ← дочерняя категория (модель)
+ *   ├── VT600C (2)
+ *   └── ...
+ *
+ * Commit 1.1: Переведено на GraphQL-клиент.
+ */
+import { fetchGraphQL } from "../lib/graphql";
+import { GET_SIDEBAR_CATEGORIES } from "../lib/queries/categories";
+import type { SidebarCategoriesResult, CategoryNode } from "../lib/types";
+
 const { pathname } = Astro.url;
 const normalize = (path: string) => path?.replace(/^\/|\/$/g, "") || "";
 const currentPath = normalize(pathname);
 
-const response = await fetch(import.meta.env.WORDPRESS_API_URL, {
-	method: "POST",
-	headers: { "Content-Type": "application/json" },
-	body: JSON.stringify({
-		query: `
-      query GetSideBarCategories {
-        productCategories(where: { 
-          parent: 0,
-          hideEmpty: true
-         }, first: 100) {
-          nodes {
-            name
-            uri
-            count
-            children {
-              nodes {
-                name
-                uri
-                count
-              }
-            }
-          }
-        }
-      }
-    `,
-	}),
-});
+let categories: CategoryNode[] = [];
 
-const { data } = await response.json();
-const categories = data?.productCategories?.nodes || [];
+try {
+	const data = await fetchGraphQL<SidebarCategoriesResult>(GET_SIDEBAR_CATEGORIES);
+	categories = data.productCategories?.nodes || [];
+} catch (e) {
+	console.error('[Sidebar] Ошибка загрузки категорий:', (e as Error).message);
+}
 ---
 
 <nav class="sidebar-nav">
+	<!-- Мобильный поиск — без автозаполнения, просто переход на /search -->
+	<form class="sidebar-search" action="/search" method="GET">
+		<div class="sidebar-search-row">
+			<input
+				type="search"
+				name="q"
+				placeholder="Поиск запчастей..."
+				required
+				minlength="4"
+				class="sidebar-search-input"
+			/>
+			<button type="submit" class="sidebar-search-btn" aria-label="Искать">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="11" cy="11" r="8"></circle>
+					<path d="M21 21l-4.35-4.35"></path>
+				</svg>
+			</button>
+		</div>
+		<select name="cat" class="sidebar-search-cat">
+			<option value="">Где искать?</option>
+			{categories.map((cat) => (
+				<option value={cat.slug}>{cat.name} ({cat.count})</option>
+			))}
+		</select>
+	</form>
+
 	<h2 class="sidebar-title">Выберите марку/модель</h2>
 	<div class="categories-scroll-area">
 		<ul class="cat-list">
@@ -65,7 +84,7 @@ const categories = data?.productCategories?.nodes || [];
 									{cat.count}
 								</span>
 
-								{cat.children.nodes.length > 0 && (
+								{cat.children && cat.children.nodes.length > 0 && (
 									<button class="toggle-btn" aria-label="Toggle submenu">
 										<svg viewBox="0 0 24 24" width="18" height="18">
 											<path d="M7 10l5 5 5-5z" />
@@ -74,12 +93,11 @@ const categories = data?.productCategories?.nodes || [];
 								)}
 							</div>
 
-							{cat.children.nodes.length > 0 && (
+							{cat.children && cat.children.nodes.length > 0 && (
 								<ul class="sub-cat-list">
 									{cat.children.nodes.map((sub) => {
 										const subPath = normalize(sub.uri);
-										// Точное совпадение для подкатегории
-										// Теперь подкатегория активна, если текущий путь начинается с её пути
+										// Подкатегория активна, если текущий путь начинается с её пути
 										const isSubActive =
 											currentPath.startsWith(subPath) && subPath !== "";
 
@@ -118,6 +136,7 @@ const categories = data?.productCategories?.nodes || [];
 			const parent = btn.closest(".cat-item");
 			if (parent) {
 				parent.classList.toggle("is-open");
+				parent.classList.toggle("is-closed");
 			}
 		});
 	});

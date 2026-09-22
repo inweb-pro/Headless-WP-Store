@@ -1,0 +1,127 @@
+---
+/**
+ * Страница результатов поиска.
+ *
+ * URL: /search?q=фара+honda&cat=honda
+ * Поддерживает фильтрацию по категории через ?cat=slug.
+ */
+import ShopLayout from "../layouts/ShopLayout.astro";
+import ProductCard from "../components/ProductCard.astro";
+import Breadcrumbs from "../components/Breadcrumbs.astro";
+import { fetchGraphQL } from "../lib/graphql";
+import type { ProductBase, PageInfo } from "../lib/types";
+
+const query = Astro.url.searchParams.get("q")?.trim() || "";
+const catSlug = Astro.url.searchParams.get("cat")?.trim() || "";
+
+// Запрос с поддержкой фильтрации по категории (slug)
+const SEARCH_PRODUCTS = `
+	query SearchProducts($search: String!, $first: Int = 40, $category: String) {
+		products(where: { search: $search, category: $category }, first: $first) {
+			found
+			nodes {
+				name, uri
+				... on ProductWithPricing { price }
+				image { sourceUrl, altText }
+			}
+		}
+	}
+`;
+
+let results: ProductBase[] = [];
+let totalFound = 0;
+let error: string | null = null;
+let categoryName = '';
+
+if (query.length >= 2) {
+	try {
+		// Если есть категория — получаем имя для заголовка
+		if (catSlug) {
+			const catData = await fetchGraphQL<any>(
+				`query { productCategory(id: "${catSlug}", idType: SLUG) { name } }`
+			);
+			categoryName = catData.productCategory?.name || catSlug;
+		}
+
+		const data = await fetchGraphQL<any>(SEARCH_PRODUCTS, {
+			search: query,
+			first: 40,
+			category: catSlug || null,
+		});
+		results = data.products?.nodes || [];
+		totalFound = data.products?.found || 0;
+	} catch (e) {
+		error = (e as Error).message;
+		console.error('[search] Ошибка:', error);
+	}
+}
+
+const titleText = query
+	? categoryName
+		? `«${query}» в ${categoryName}`
+		: `«${query}»`
+	: 'Поиск';
+---
+
+<ShopLayout title={`Поиск: ${titleText}`}>
+	<div class="content-wrapper">
+		<Breadcrumbs items={[{ name: "Поиск" }]} />
+
+		<section class="search-results">
+			{!query ? (
+				<div class="search-empty">
+					<h1>Поиск</h1>
+					<p>Введите запрос в строке поиска в шапке сайта</p>
+				</div>
+			) : query.length < 2 ? (
+				<p class="search-hint">Введите минимум 2 символа</p>
+			) : error ? (
+				<p class="error-message">Ошибка поиска. Попробуйте позже.</p>
+			) : results.length === 0 ? (
+				<div class="no-results">
+					<h1>По запросу {titleText} ничего не найдено</h1>
+					<p>Попробуйте изменить запрос или <a href="/shop">перейти в каталог</a></p>
+				</div>
+			) : (
+				<>
+					<h1>Результаты: {titleText} <span class="results-count">({totalFound})</span></h1>
+					<div class="products-grid">
+						{results.map((p) => <ProductCard product={p} variant="v1" />)}
+					</div>
+				</>
+			)}
+		</section>
+	</div>
+</ShopLayout>
+
+<style>
+	.search-empty, .no-results {
+		text-align: center;
+		padding: 60px 0;
+	}
+
+	.search-empty h1, .no-results h1 {
+		font-size: 1.3rem;
+		margin-bottom: 10px;
+	}
+
+	.no-results a {
+		color: var(--dark, #333);
+		font-weight: 600;
+		text-decoration: underline;
+		text-decoration-color: var(--color-primary, #ffdd00);
+		text-underline-offset: 3px;
+	}
+
+	.search-hint {
+		color: #888;
+		padding: 40px 0;
+		text-align: center;
+	}
+
+	.results-count {
+		font-weight: 400;
+		color: #888;
+		font-size: 0.85em;
+	}
+</style>

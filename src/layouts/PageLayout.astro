@@ -1,9 +1,20 @@
 ---
+/**
+ * PageLayout — обёртка для контентных страниц (О компании, Контакты и т.д.).
+ */
 import Layout from '../components/Layout.astro';
 
-const { title } = Astro.props;
+interface Props {
+	title: string;
+	description?: string;
+	image?: string;
+	type?: 'website' | 'product' | 'article';
+	breadcrumbs?: Array<{ name: string; uri: string }>;
+}
+
+const { title, description, image, type, breadcrumbs } = Astro.props;
 ---
-<Layout title={title}>
+<Layout title={title} description={description} image={image} type={type} breadcrumbs={breadcrumbs}>
   <div class="container page-content">
     <slot />
   </div>
