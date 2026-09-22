@@ -9,7 +9,10 @@
 const PRODUCT_CARD_FIELDS = `
 	databaseId
 	name
-	uri
+	slug
+	... on UniformResourceIdentifiable {
+		uri
+	}
 	... on ProductWithPricing {
 		price
 		regularPrice
@@ -134,18 +137,7 @@ export const GET_NODE = `
 			}
 			related(first: 4) {
 				nodes {
-					... on SimpleProduct {
-						name
-						uri
-						price
-						image { sourceUrl, altText }
-					}
-					... on VariableProduct {
-						name
-						uri
-						price
-						image { sourceUrl, altText }
-					}
+					${PRODUCT_CARD_FIELDS}
 				}
 			}
 		}

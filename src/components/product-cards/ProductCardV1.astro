@@ -1,5 +1,10 @@
 ---
 // src/components/ProductCard.astro
+function cleanPrice(p: string | null | undefined): string {
+	if (!p) return '';
+	return p.replace(/&nbsp;/gi, ' ').replace(/\u00a0/g, ' ').replace(/&#8381;/gi, '₽').trim();
+}
+
 const { product } = Astro.props;
 const price = product.price || "Цена по запросу";
 ---
@@ -12,7 +17,16 @@ const price = product.price || "Цена по запросу";
 				alt={product.name}
 				loading="lazy"
 			/>
-			<button class="wishlist-btn" aria-label="Добавить в избранное">
+			<button
+				type="button"
+				class="wishlist-btn"
+				aria-label="Добавить в избранное"
+				data-wishlist-add={product.databaseId}
+				data-product-name={product.name}
+				data-product-price={cleanPrice(price)}
+				data-product-image={product.image?.sourceUrl || ''}
+				data-product-uri={product.uri}
+			>
 				<svg
 					width="20"
 					height="20"
@@ -286,6 +300,16 @@ const price = product.price || "Цена по запросу";
 
 			&:hover {
 				color: #e44d26;
+			}
+
+			&.is-active {
+				opacity: 1 !important;
+				transform: scale(1) !important;
+				color: #e44d26;
+
+				svg {
+					fill: #e44d26;
+				}
 			}
 		}
 	}

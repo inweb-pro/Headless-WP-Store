@@ -115,12 +115,12 @@ try {
 					<span>Личный кабинет</span>
 				</a>
 
-				<a href="/wishlist" class="action-item">
+				<a href="/wishlist" class="action-item" aria-label="Избранное">
 					<div class="icon-badge">
 						<svg class="icon" width="26" height="26">
 							<use href="/ui-icons.svg#heart"></use>
 						</svg>
-						<span class="badge yellow">1</span>
+						<span class="badge yellow wishlist-count-badge" style="display: none;">0</span>
 					</div>
 				</a>
 
@@ -486,12 +486,12 @@ try {
 					>
 				</a>
 
-				<!-- <div class="action-item">
+				<a href="/wishlist" class="action-item" aria-label="Избранное">
 					<div class="icon-badge">
 						<svg class="icon" width="26" height="26"><use href="/ui-icons.svg#heart"></use></svg>
-						<span class="badge yellow">1</span>
+						<span class="badge yellow wishlist-count-badge" style="display: none;">0</span>
 					</div>
-				</div> -->
+				</a>
 
 				<div class="action-item cart-total" data-offcanvas-toggle="cart-panel">
 					<div class="icon-badge">
@@ -508,15 +508,16 @@ try {
 						data-offcanvas-toggle="mobile-menu"
 						data-focus-id="mobile-search-input"
 					>
-						<svg class="nav-icon" width="26" height="26">
+						<svg class="icon" width="24" height="24">
 							<use href="/ui-icons.svg#search"></use>
 						</svg>
 					</div>
-					<div class="icon-badge">
-						<div data-offcanvas-toggle="cart-panel">
-							<svg class="icon" width="26" height="26">
-								<use href="/ui-icons.svg#shopping-cart"></use>
-							</svg>
+
+					<div class="action-item" data-offcanvas-toggle="cart-panel">
+						<div class="icon-badge">
+							<svg class="icon" width="24" height="24"
+								><use href="/ui-icons.svg#shopping-cart"></use></svg
+							>
 							<span class="badge yellow" style="display: none;">0</span>
 						</div>
 					</div>
@@ -532,12 +533,14 @@ try {
 		import { initStickyHeader } from "../scripts/sticky-header.js";
 		import { initActiveMenu } from "../scripts/active-menu.js";
 		import { initCart } from "../scripts/cart.js";
+		import { initWishlist } from "../scripts/wishlist.js";
 
 		initOffcanvas();
 		initMobileSubmenus();
 		initStickyHeader();
 		initActiveMenu();
 		initCart();
+		initWishlist();
 
 		// Обработка формы входа в offcanvas
 		const offcanvasLoginForm = document.getElementById('offcanvas-login-form');

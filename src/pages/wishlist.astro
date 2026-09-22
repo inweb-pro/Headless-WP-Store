@@ -1,11 +1,417 @@
 ---
-import PageLayout from '../layouts/PageLayout.astro';
+import Layout from '../components/Layout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 ---
-<PageLayout title="О компании">
-  <section class="hero">
-    <h1>Избранное</h1>
-    <p>Ваши отложенные для покупки товары.</p>
-    <a href="/shop" class="btn">Перейти в каталог</a>
-    <hr style="height:2000px" />
-  </section>
-</PageLayout>
+
+<Layout title="Избранное">
+	<div class="container wishlist-page-container">
+		<Breadcrumbs items={[{ name: "Избранное", uri: "/wishlist" }]} />
+
+		<h1 class="wishlist-title">Избранное</h1>
+
+		<!-- Блок пустой страницы (когда в избранном нет товаров) -->
+		<div id="wishlist-empty-state" class="wishlist-empty-state" style="display: none;">
+			<div class="empty-icon">
+				<svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+					<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+				</svg>
+			</div>
+			<h2>В избранном пока нет товаров</h2>
+			<p>Добавляйте понравившиеся товары в список избранного, чтобы вернуться к ним позже.</p>
+			<a href="/shop" class="btn-catalog">Перейти в каталог</a>
+		</div>
+
+		<!-- Сетка карточек товаров в избранном -->
+		<div id="wishlist-grid" class="products-grid wishlist-grid" style="display: none;">
+			<!-- Рендерится на клиенте из localStorage -->
+		</div>
+	</div>
+</Layout>
+
+<script>
+	import { wishlist } from '../scripts/wishlist.js';
+	import { cart } from '../scripts/cart.js';
+
+	function escapeHtml(str: string) {
+		if (!str) return '';
+		return str
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#039;');
+	}
+
+	function renderWishlist() {
+		const items = wishlist.getItems();
+		const emptyEl = document.getElementById('wishlist-empty-state');
+		const gridEl = document.getElementById('wishlist-grid');
+
+		if (!emptyEl || !gridEl) return;
+
+		if (!items || items.length === 0) {
+			emptyEl.style.display = 'block';
+			gridEl.style.display = 'none';
+			gridEl.innerHTML = '';
+			return;
+		}
+
+		emptyEl.style.display = 'none';
+		gridEl.style.display = 'grid';
+
+		gridEl.innerHTML = items.map((item: any) => {
+			const imageSrc = item.image || '/placeholder.jpg';
+			const uri = item.uri || '#';
+			const name = escapeHtml(item.name || 'Товар');
+			const price = item.price || '';
+
+			return `
+				<article class="wishlist-card product-card" data-product-id="${item.databaseId}">
+					<div class="wishlist-card__inner">
+						<div class="image-wrapper">
+							<a href="${uri}" class="image-link">
+								<img src="${imageSrc}" alt="${name}" loading="lazy" />
+							</a>
+							<button
+								type="button"
+								class="wishlist-remove-btn"
+								data-wishlist-add="${item.databaseId}"
+								data-wishlist-remove-btn
+								aria-label="Удалить из избранного"
+								title="Удалить из избранного"
+							>
+								<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+									<line x1="18" y1="6" x2="6" y2="18"></line>
+									<line x1="6" y1="6" x2="18" y2="18"></line>
+								</svg>
+							</button>
+						</div>
+
+						<div class="product-info">
+							<h3 class="product-name">
+								<a href="${uri}" class="product-link">${name}</a>
+							</h3>
+							<p class="product-price">${price}</p>
+						</div>
+
+						<div class="cart-action">
+							<button
+								type="button"
+								class="add-to-cart-btn"
+								data-add-to-cart="${item.databaseId}"
+								aria-label="Добавить в корзину"
+							>
+								<span class="btn-content-wrapper">
+									<span class="btn-text">В КОРЗИНУ</span>
+									<span class="btn-icon">
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											width="22"
+											height="22"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<circle cx="9" cy="21" r="1"></circle>
+											<circle cx="20" cy="21" r="1"></circle>
+											<path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+										</svg>
+									</span>
+								</span>
+							</button>
+						</div>
+					</div>
+				</article>
+			`;
+		}).join('');
+
+		// Синхронизируем состояние кнопок корзины
+		if (cart && typeof cart.updateButtonStates === 'function') {
+			cart.updateButtonStates();
+		}
+	}
+
+	// Инициализация при монтировании
+	renderWishlist();
+
+	// Синхронизация при изменении списка избранного
+	window.addEventListener('wishlist:updated', () => {
+		const items = wishlist.getItems();
+		if (items.length === 0) {
+			const emptyEl = document.getElementById('wishlist-empty-state');
+			const gridEl = document.getElementById('wishlist-grid');
+			if (emptyEl) emptyEl.style.display = 'block';
+			if (gridEl) {
+				gridEl.style.display = 'none';
+				gridEl.innerHTML = '';
+			}
+		}
+	});
+
+	// Синхронизация при обновлении корзины
+	window.addEventListener('cart:updated', () => {
+		if (cart && typeof cart.updateButtonStates === 'function') {
+			cart.updateButtonStates();
+		}
+	});
+</script>
+
+<style>
+	.wishlist-page-container {
+		max-width: var(--container, 1320px);
+		margin: 20px auto 60px;
+		padding: 0 15px;
+	}
+
+	.wishlist-title {
+		text-align: center;
+		font-family: "Play", sans-serif;
+		font-size: 2rem;
+		font-weight: 700;
+		margin: 15px 0 35px;
+		color: #222;
+	}
+
+	/* Пустое состояние */
+	.wishlist-empty-state {
+		text-align: center;
+		padding: 60px 20px 80px;
+		max-width: 500px;
+		margin: 0 auto;
+	}
+
+	.wishlist-empty-state .empty-icon {
+		margin-bottom: 20px;
+	}
+
+	.wishlist-empty-state h2 {
+		font-family: "Play", sans-serif;
+		font-size: 1.5rem;
+		margin: 0 0 10px;
+		color: #222;
+	}
+
+	.wishlist-empty-state p {
+		color: #777;
+		font-size: 0.95rem;
+		line-height: 1.5;
+		margin: 0 0 25px;
+	}
+
+	.btn-catalog {
+		display: inline-block;
+		background: var(--color-primary, #ffdd00);
+		color: var(--dark, #333);
+		padding: 12px 30px;
+		border-radius: 8px;
+		font-family: "Play", sans-serif;
+		font-weight: 700;
+		text-decoration: none;
+		transition: background 0.2s, transform 0.1s;
+	}
+
+	.btn-catalog:hover {
+		background: #e6c700;
+		transform: translateY(-1px);
+	}
+
+	/* Сетка избранного */
+	.wishlist-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: 20px 15px;
+	}
+
+	/* Карточка товара в избранном */
+	:global(.wishlist-card) {
+		position: relative;
+		z-index: 1;
+	}
+
+	:global(.wishlist-card__inner) {
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 15px;
+		padding: 8px;
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		transition: all 0.3s ease;
+		position: relative;
+	}
+
+	:global(.wishlist-card:hover .wishlist-card__inner) {
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+		transform: translateY(-4px);
+	}
+
+	:global(.wishlist-card .image-wrapper) {
+		position: relative;
+		aspect-ratio: 320 / 220;
+		overflow: hidden;
+		background-color: #f9f9f9;
+		border-radius: 10px;
+		margin-bottom: 12px;
+	}
+
+	:global(.wishlist-card .image-link) {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	:global(.wishlist-card .image-wrapper img) {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transition: transform 0.3s ease;
+	}
+
+	:global(.wishlist-card:hover .image-wrapper img) {
+		transform: scale(1.06);
+	}
+
+	:global(.wishlist-card .wishlist-remove-btn) {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		z-index: 15;
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 50%;
+		width: 32px;
+		height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+		color: #777;
+		transition: all 0.2s ease;
+		padding: 0;
+	}
+
+	:global(.wishlist-card .wishlist-remove-btn:hover) {
+		color: #e44d26;
+		background: #fff5f2;
+		border-color: #e44d26;
+		transform: scale(1.1);
+	}
+
+	:global(.wishlist-card .product-info) {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		padding: 0 4px;
+	}
+
+	:global(.wishlist-card .product-name) {
+		font-family: "Play", sans-serif;
+		font-size: 0.95rem;
+		margin: 0 0 8px;
+		line-height: 1.4;
+		height: 2.8em;
+	}
+
+	:global(.wishlist-card .product-link) {
+		color: #222;
+		text-decoration: none;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		transition: color 0.15s;
+	}
+
+	:global(.wishlist-card .product-link:hover) {
+		color: #e44d26;
+	}
+
+	:global(.wishlist-card .product-price) {
+		margin: auto 0 12px;
+		color: #e44d26;
+		font-weight: 700;
+		font-size: 1.05rem;
+	}
+
+	:global(.wishlist-card .cart-action) {
+		padding: 0 4px 4px;
+	}
+
+	:global(.wishlist-card .add-to-cart-btn) {
+		width: 100%;
+		height: 40px;
+		background: var(--color-primary, #ffdd00);
+		border: none;
+		border-radius: 8px;
+		cursor: pointer;
+		overflow: hidden;
+		position: relative;
+		z-index: 2;
+		font-family: "Play", sans-serif;
+		font-weight: 700;
+		transition: background 0.2s;
+		padding: 0;
+	}
+
+	:global(.wishlist-card .add-to-cart-btn .btn-content-wrapper) {
+		display: block;
+		width: 100%;
+		height: 100%;
+		position: relative;
+	}
+
+	:global(.wishlist-card .add-to-cart-btn .btn-text),
+	:global(.wishlist-card .add-to-cart-btn .btn-icon) {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: 700;
+		font-size: 0.85rem;
+		transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	:global(.wishlist-card .add-to-cart-btn .btn-icon) {
+		transform: translateY(100%);
+	}
+
+	:global(.wishlist-card .add-to-cart-btn:hover:not(.is-in-cart) .btn-text) {
+		transform: translateY(-100%);
+	}
+
+	:global(.wishlist-card .add-to-cart-btn:hover:not(.is-in-cart) .btn-icon) {
+		transform: translateY(0);
+	}
+
+	:global(.wishlist-card .add-to-cart-btn:hover:not(.is-in-cart)) {
+		background: #e6c700;
+	}
+
+	:global(.wishlist-card .add-to-cart-btn.is-in-cart) {
+		background: #e2e2e2 !important;
+		color: #555 !important;
+		cursor: not-allowed !important;
+		border: 1px solid #d0d0d0 !important;
+	}
+
+	:global(.wishlist-card .add-to-cart-btn.is-in-cart .btn-text) {
+		transform: none !important;
+		font-size: 12px;
+		color: #555 !important;
+		letter-spacing: 0.5px;
+	}
+
+	:global(.wishlist-card .add-to-cart-btn.is-in-cart .btn-icon) {
+		display: none !important;
+	}
+
+	:global(.wishlist-card .add-to-cart-btn.is-in-cart:hover) {
+		background: #d8d8d8 !important;
+	}
+</style>

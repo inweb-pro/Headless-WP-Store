@@ -40,6 +40,9 @@ export function initLoadMore() {
       if (typeof window !== 'undefined' && window.MotoCart && typeof window.MotoCart.updateButtonStates === 'function') {
         window.MotoCart.updateButtonStates();
       }
+      if (typeof window !== 'undefined' && window.MotoWishlist && typeof window.MotoWishlist.updateButtonStates === 'function') {
+        window.MotoWishlist.updateButtonStates();
+      }
 
       // Обновляем кнопку или удаляем её
       if (hasNextPage && newCursor) {

@@ -220,8 +220,58 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 						</p>
 
 						<div class="product-buy-wrap">
-							<button class="buy-btn" data-add-to-cart={product.databaseId} disabled={product.stockStatus !== 'IN_STOCK'}>
-								В КОРЗИНУ
+							<button
+								class="buy-btn"
+								data-add-to-cart={product.databaseId}
+								disabled={product.stockStatus !== 'IN_STOCK'}
+								aria-label="Добавить в корзину"
+							>
+								<span class="btn-content-wrapper">
+									<span class="btn-text">В КОРЗИНУ</span>
+									<span class="btn-icon">
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											width="22"
+											height="22"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<circle cx="9" cy="21" r="1"></circle>
+											<circle cx="20" cy="21" r="1"></circle>
+											<path
+												d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"
+											></path>
+										</svg>
+									</span>
+								</span>
+							</button>
+
+							<button
+								type="button"
+								class="product-wishlist-btn"
+								data-wishlist-add={product.databaseId}
+								data-product-name={product.name}
+								data-product-price={product.price ? product.price.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/\u00a0/g, ' ').trim() : ''}
+								data-product-image={product.image?.sourceUrl || ''}
+								data-product-uri={product.uri}
+								aria-label="Добавить в избранное"
+								title="В избранное"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="22"
+									height="22"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+									></path>
+								</svg>
 							</button>
 						</div>
 
@@ -435,26 +485,57 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 	}
 
 	.buy-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		position: relative;
+		display: block;
 		flex: 1;
-		max-width: 240px;
+		max-width: 220px;
 		height: 48px;
-		padding: 0 30px;
 		background: var(--color-primary, #ffdd00);
 		color: var(--dark, #333);
 		border: none;
-		border-radius: 6px;
-		font-size: 1rem;
-		font-weight: 700;
+		border-radius: 8px;
 		cursor: pointer;
+		overflow: hidden;
 		transition: background 0.2s, transform 0.1s;
+		padding: 0;
+	}
+
+	.buy-btn .btn-content-wrapper {
+		display: block;
+		width: 100%;
+		height: 100%;
+		position: relative;
+	}
+
+	.buy-btn .btn-text,
+	.buy-btn .btn-icon {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.95rem;
+		font-weight: 700;
+		transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	.buy-btn .btn-icon {
+		transform: translateY(100%);
+	}
+
+	.buy-btn:hover:not(:disabled):not(.is-in-cart) .btn-text {
+		transform: translateY(-100%);
+	}
+
+	.buy-btn:hover:not(:disabled):not(.is-in-cart) .btn-icon {
+		transform: translateY(0);
 	}
 
 	.buy-btn:hover:not(:disabled) {
 		background: #e6c700;
-		transform: translateY(-1px);
 	}
 
 	.buy-btn:disabled {
@@ -471,9 +552,50 @@ const modelCategory = categories.find((c) => (c.ancestors?.nodes?.length || 0) >
 		box-shadow: none !important;
 	}
 
+	.buy-btn.is-in-cart .btn-text {
+		transform: none !important;
+		font-size: 13px;
+		color: #555 !important;
+		letter-spacing: 0.5px;
+	}
+
+	.buy-btn.is-in-cart .btn-icon {
+		display: none !important;
+	}
+
 	.buy-btn.is-in-cart:hover {
 		background: #d8d8d8 !important;
 		transform: none !important;
+	}
+
+	.product-wishlist-btn {
+		width: 48px;
+		height: 48px;
+		border-radius: 8px;
+		border: 1px solid #e0e0e0;
+		background: #fff;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		color: #555;
+		transition: all 0.2s ease;
+	}
+
+	.product-wishlist-btn:hover {
+		color: #e44d26;
+		border-color: #e44d26;
+		background: #fff5f2;
+	}
+
+	.product-wishlist-btn.is-active {
+		color: #e44d26;
+		border-color: #e44d26;
+		background: #fff5f2;
+	}
+
+	.product-wishlist-btn.is-active svg {
+		fill: #e44d26;
 	}
 
 	/* Атрибуты */

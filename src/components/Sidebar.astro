@@ -62,32 +62,6 @@ const categories = rawCategories
 ---
 
 <nav class="sidebar-nav">
-	<!-- Мобильный поиск — без автозаполнения, просто переход на /search -->
-	<form class="sidebar-search" action="/search" method="GET">
-		<div class="sidebar-search-row">
-			<input
-				type="search"
-				name="q"
-				placeholder="Поиск запчастей..."
-				required
-				minlength="4"
-				class="sidebar-search-input"
-			/>
-			<button type="submit" class="sidebar-search-btn" aria-label="Искать">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<circle cx="11" cy="11" r="8"></circle>
-					<path d="M21 21l-4.35-4.35"></path>
-				</svg>
-			</button>
-		</div>
-		<select name="cat" class="sidebar-search-cat">
-			<option value="">Где искать?</option>
-			{categories.map((cat) => (
-				<option value={cat.slug}>{cat.name} ({cat.count})</option>
-			))}
-		</select>
-	</form>
-
 	<h2 class="sidebar-title">Выберите марку/модель</h2>
 	<div class="categories-scroll-area">
 		<ul class="cat-list">
